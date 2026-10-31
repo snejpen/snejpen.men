@@ -11,7 +11,7 @@
   "use strict";
 
   const SITE = {
-    name: "Snejpen.tools",
+    name: "Snejpen.men",
     home: "index.html",
     menus: [
       {
