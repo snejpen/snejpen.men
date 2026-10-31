@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coin flip — Snejpen.tools</title>
+<link rel="stylesheet" href="site.css">
+<style>
+  /* Styles that only this page needs. Shared styles live in site.css */
+
+  .coin-page {
+    --coin: clamp(190px, 38vmin, 300px);
+    --half: 7px;                     /* half the coin's thickness */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 12px;
+  }
+
+  /* ---------- score ---------- */
+  .score {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 14px;
+    padding: 14px 28px;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    font-size: clamp(22px, 4.2vw, 34px);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .score .side { color: var(--text-dim); font-weight: 600; }
+  .score .num {
+    min-width: 1.4ch;
+    text-align: center;
+    font-family: var(--mono);
+    font-weight: 700;
+    color: var(--text);
+    display: inline-block;
+  }
+  .score .dash { color: var(--text-faint); }
+  .score .num.bump { animation: bump .35s ease; }
+  @keyframes bump {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
+
+  /* ---------- coin scene ---------- */
+  .scene {
+    position: relative;
+    width: min(100%, 420px);
+    height: calc(var(--coin) + 210px);
+    margin-top: 10px;
+  }
+
+  .shadow {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    width: calc(var(--coin) * 0.82);
+    height: calc(var(--coin) * 0.16);
+    margin-left: calc(var(--coin) * -0.41);
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 70%);
+  }
+
+  .coin-button {
+    position: absolute;
+    left: 50%;
+    bottom: 40px;
+    width: var(--coin);
+    height: var(--coin);
+    margin-left: calc(var(--coin) / -2);
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    perspective: 900px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .coin-button:disabled { cursor: default; }
+
+  .toss, .coin {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+  }
+
+  .face, .edge {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+  }
+  .edge { background: #b3820f; }
+  .edge:nth-child(even) { background: #9c7009; }   /* faint ridges around the rim */
+
+  .face {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    background: radial-gradient(circle at 32% 28%, #fbe39a 0%, #e8b93f 38%, #c58f16 72%, #9b6f10 100%);
+    box-shadow:
+      inset 0 0 0 calc(var(--coin) * 0.035) #b9860f,
+      inset 0 0 0 calc(var(--coin) * 0.05) #f3cf6c,
+      inset 0 0 calc(var(--coin) * 0.06) rgba(0,0,0,0.35);
+    color: #7a5510;
+    user-select: none;
+  }
+  .face.front { transform: translateZ(var(--half)); }
+  .face.back  { transform: rotateX(180deg) translateZ(var(--half)); }
+
+  /* the picture on each face: sits inside the rim, clipped to a circle, whole image visible.
+     A soft shadow lifts it off the gold (yellow artwork would otherwise blend in). */
+  .face .pic {
+    position: absolute;
+    top: 6.5%;
+    left: 6.5%;
+    width: 87%;
+    height: 87%;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+  .face .pic img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 calc(var(--coin) * 0.010) calc(var(--coin) * 0.014) rgba(70, 40, 0, 0.6));
+    pointer-events: none;
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+
+  /* ---------- result + controls ---------- */
+  .result {
+    min-height: 1.6em;
+    margin: 4px 0 18px;
+    font-size: 20px;
+    font-weight: 650;
+    color: var(--text);
+  }
+  .result.hint { font-size: 14px; font-weight: 500; color: var(--text-dim); }
+
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* ---------- theme picker (opens upward, over the coin area) ---------- */
+  .theme { position: relative; }
+
+  .theme-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 13px 16px;
+    border-radius: 10px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    transition: background .15s ease;
+  }
+  .theme-btn:hover { background: var(--bg-raised-hover); }
+  .theme-btn:disabled { background: var(--disabled-bg); border-color: var(--line); color: var(--disabled-text); cursor: not-allowed; }
+  .theme-btn .theme-key { color: var(--text-dim); font-weight: 500; }
+  .theme-btn:disabled .theme-key { color: var(--disabled-text); }
+  .theme-btn::after {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(1px) rotate(-135deg);   /* points up, since the menu opens upward */
+    transition: transform .15s ease;
+  }
+  .theme.open .theme-btn::after { transform: translateY(-2px) rotate(45deg); }
+
+  .theme-menu {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    min-width: 100%;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    background: var(--bg-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+    z-index: 10;
+  }
+  .theme-menu[hidden] { display: none; }
+
+  .theme-menu li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 10px 12px;
+    border-radius: 7px;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .theme-menu li:hover,
+  .theme-menu li:focus-visible { background: var(--bg-raised-hover); outline: none; }
+  .theme-menu li[aria-selected="true"] { font-weight: 650; }
+  .theme-menu li[aria-selected="true"]::after { content: "\2713"; color: var(--text-dim); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .score .num.bump { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<header id="site-nav"></header>
+
+<main class="page">
+  <section class="coin-page">
+
+    <div class="score" id="score" aria-live="polite">
+      <span class="side">Heads</span>
+      <span class="num" id="headsCount">0</span>
+      <span class="dash">-</span>
+      <span class="num" id="tailsCount">0</span>
+      <span class="side">Tails</span>
+    </div>
+
+    <div class="scene">
+      <div class="shadow" id="shadow"></div>
+      <button class="coin-button" id="coinBtn" type="button" aria-label="Flip the coin">
+        <div class="toss" id="toss">
+          <div class="coin" id="coin">
+            <div class="face front"><div class="pic"><img id="headsImg" src="CoinThemes/default.webp" alt="" draggable="false"></div></div>
+            <div class="face back"><div class="pic"><img id="tailsImg" src="CoinThemes/waga.webp" alt="" draggable="false"></div></div>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    <div class="result hint" id="result" aria-live="polite">Click the coin to flip it</div>
+    <div class="controls">
+
+      <div class="theme" id="theme">
+        <button class="theme-btn" id="themeBtn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="themeMenu">
+          <span class="theme-key">Theme</span><span id="themeValue">Default</span>
+        </button>
+        <ul class="theme-menu" id="themeMenu" role="listbox" aria-label="Heads theme" hidden></ul>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<script src="site.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // The score lives only in memory, so a refresh starts it over at 0 - 0.
+  let heads = 0;
+  let tails = 0;
+  let rotation = 0;     // total degrees the coin has turned so far (keeps growing, so it always spins forward)
+  let flipping = false;
+
+  // Heads themes. To add one: put its image in the CoinThemes folder and add a line here.
+  // Tails is always the animated waga image.
+  const THEMES = [
+    { label: "Default", src: "CoinThemes/default.webp" },
+    { label: "Popcoin", src: "CoinThemes/popcoin.png" },
+    { label: "Brundis", src: "CoinThemes/BrundisFace.png" },
+    { label: "Grayson", src: "CoinThemes/GraycenSloshed.png" }
+  ];
+  let themeIndex = 0;
+
+  const FLIP_MS = 2400;
+  const THICKNESS = 14;       // px; keep in step with --half in the CSS
+  const EDGE_LAYERS = 14;
+
+  const coin = document.getElementById("coin");
+  const toss = document.getElementById("toss");
+  const shadow = document.getElementById("shadow");
+  const coinBtn = document.getElementById("coinBtn");
+  const result = document.getElementById("result");
+  const headsEl = document.getElementById("headsCount");
+  const tailsEl = document.getElementById("tailsCount");
+  const headsImg = document.getElementById("headsImg");
+  const themeBox = document.getElementById("theme");
+  const themeBtn = document.getElementById("themeBtn");
+  const themeMenu = document.getElementById("themeMenu");
+  const themeValue = document.getElementById("themeValue");
+
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // thin discs stacked between the two faces give the coin a solid rim
+  const firstFace = coin.firstElementChild;
+  for (let i = 0; i <= EDGE_LAYERS; i++) {
+    const layer = document.createElement("div");
+    layer.className = "edge";
+    layer.style.transform = "translateZ(" + (-THICKNESS / 2 + (i * THICKNESS) / EDGE_LAYERS) + "px)";
+    coin.insertBefore(layer, firstFace);
+  }
+
+  // a fair coin: one random bit from the browser's secure generator (256 is even, so no bias)
+  function randomIsHeads() {
+    const buf = new Uint8Array(1);
+    crypto.getRandomValues(buf);
+    return (buf[0] & 1) === 0;
+  }
+
+  function bump(el) {
+    el.classList.remove("bump");
+    void el.offsetWidth;
+    el.classList.add("bump");
+  }
+
+  /* ---------- theme picker ---------- */
+
+  const themeOptions = THEMES.map(function (theme, i) {
+    const li = document.createElement("li");
+    li.setAttribute("role", "option");
+    li.tabIndex = -1;
+    li.textContent = theme.label;
+    li.addEventListener("click", function () { chooseTheme(i); });
+    themeMenu.appendChild(li);
+    return li;
+  });
+
+  function menuIsOpen() { return !themeMenu.hidden; }
+
+  function openMenu() {
+    if (themeBtn.disabled) return;
+    themeMenu.hidden = false;
+    themeBox.classList.add("open");
+    themeBtn.setAttribute("aria-expanded", "true");
+    // warm the cache so picking another theme shows up straight away
+    THEMES.forEach(function (t) { new Image().src = t.src; });
+  }
+
+  function closeMenu(returnFocus) {
+    themeMenu.hidden = true;
+    themeBox.classList.remove("open");
+    themeBtn.setAttribute("aria-expanded", "false");
+    if (returnFocus) themeBtn.focus();
+  }
+
+  function paintThemeOptions() {
+    themeOptions.forEach(function (li, i) { li.setAttribute("aria-selected", String(i === themeIndex)); });
+  }
+
+  function chooseTheme(i) {
+    themeIndex = i;
+    themeValue.textContent = THEMES[i].label;
+    paintThemeOptions();
+    closeMenu(true);
+
+    // swap the face picture once it has loaded, so the coin never flashes empty
+    const loader = new Image();
+    const show = function () { if (themeIndex === i) headsImg.src = THEMES[i].src; };
+    loader.onload = show;
+    loader.onerror = show;
+    loader.src = THEMES[i].src;
+  }
+
+  themeBtn.addEventListener("click", function () {
+    if (menuIsOpen()) closeMenu(false); else openMenu();
+  });
+
+  themeBtn.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      openMenu();
+      if (menuIsOpen()) themeOptions[themeIndex].focus();
+    }
+  });
+
+  themeMenu.addEventListener("keydown", function (e) {
+    const at = themeOptions.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); themeOptions[(at + 1) % themeOptions.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); themeOptions[(at - 1 + themeOptions.length) % themeOptions.length].focus(); }
+    else if (e.key === "Home") { e.preventDefault(); themeOptions[0].focus(); }
+    else if (e.key === "End") { e.preventDefault(); themeOptions[themeOptions.length - 1].focus(); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (at !== -1) chooseTheme(at); }
+    else if (e.key === "Escape") { e.preventDefault(); closeMenu(true); }
+    else if (e.key === "Tab") { closeMenu(false); }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (menuIsOpen() && !e.target.closest("#theme")) closeMenu(false);
+  });
+
+  paintThemeOptions();
+
+  /* ---------- flipping ---------- */
+
+  function land(isHeads) {
+    if (isHeads) { heads++; headsEl.textContent = heads; bump(headsEl); }
+    else         { tails++; tailsEl.textContent = tails; bump(tailsEl); }
+    result.classList.remove("hint");
+    result.textContent = isHeads ? "Heads!" : "Tails!";
+    flipping = false;
+    coinBtn.disabled = false;
+    themeBtn.disabled = false;
+  }
+
+  function flip() {
+    if (flipping) return;
+    flipping = true;
+    closeMenu(false);
+    coinBtn.disabled = true;
+    themeBtn.disabled = true;     // the face stays put while the coin is in the air
+    result.classList.remove("hint");
+    result.textContent = "\u00a0";
+
+    const isHeads = randomIsHeads();
+
+    // heads = a whole number of turns, tails = a whole number of turns plus a half
+    const spins = 5 + Math.floor(Math.random() * 3);
+    rotation = Math.ceil(rotation / 360) * 360 + spins * 360 + (isHeads ? 0 : 180);
+
+    if (reduceMotion) {
+      coin.style.transition = "none";
+      coin.style.transform = "rotateX(" + rotation + "deg)";
+      setTimeout(function () { land(isHeads); }, 0);
+      return;
+    }
+
+    coin.style.transition = "transform " + FLIP_MS + "ms cubic-bezier(0.2, 0.6, 0.3, 1)";
+    coin.style.transform = "rotateX(" + rotation + "deg)";
+
+    // the toss: up, then back down, with the shadow shrinking while the coin is high
+    const height = Math.min(190, Math.max(110, window.innerHeight * 0.22));
+    toss.animate([
+      { transform: "translateY(0) scale(1)", easing: "cubic-bezier(0.2, 0.7, 0.35, 1)" },
+      { transform: "translateY(" + (-height) + "px) scale(1.12)", offset: 0.45, easing: "cubic-bezier(0.65, 0, 0.8, 0.4)" },
+      { transform: "translateY(0) scale(1)" }
+    ], { duration: FLIP_MS });
+
+    shadow.animate([
+      { transform: "scale(1)", opacity: 1, easing: "cubic-bezier(0.2, 0.7, 0.35, 1)" },
+      { transform: "scale(0.6)", opacity: 0.45, offset: 0.45, easing: "cubic-bezier(0.65, 0, 0.8, 0.4)" },
+      { transform: "scale(1)", opacity: 1 }
+    ], { duration: FLIP_MS });
+
+    setTimeout(function () { land(isHeads); }, FLIP_MS + 40);
+  }
+
+  coinBtn.addEventListener("click", flip);
+})();
+</script>
+
+</body>
+</html>

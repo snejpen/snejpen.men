@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Random name selector — Snejpen.tools</title>
+<link rel="stylesheet" href="site.css">
+<style>
+  /* Styles that only this page needs. Shared styles live in site.css */
+
+  .eyebrow-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    margin-right: 8px;
+    position: relative;
+    top: -1px;
+  }
+  .eyebrow-dot.live {
+    background: var(--danger);
+    box-shadow: 0 0 0 0 rgba(255,128,119,0.6);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255,128,119,0.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(255,128,119,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,128,119,0); }
+  }
+
+  /* ---------- setup screen ---------- */
+  #menu {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 40px 36px;
+    max-width: 460px;
+    margin: 24px auto 0;
+    box-shadow: var(--shadow);
+  }
+
+  .title {
+    font-size: 28px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    margin: 0 0 28px;
+    color: var(--text);
+  }
+
+  .menu-error {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--danger);
+    display: none;
+  }
+
+  .any-msg-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: -8px 0 20px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.4;
+    cursor: pointer;
+  }
+  .any-msg-toggle input {
+    margin-top: 2px;
+    accent-color: var(--primary);
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .field.disabled { opacity: 0.45; }
+  .field.disabled .field-row { pointer-events: none; }
+
+  /* ---------- game screen ---------- */
+  #game { display: none; }
+
+  .game-header {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 14px 14px 0 0;
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .channel-info { display: flex; flex-direction: column; gap: 4px; }
+  .channel-name { font-size: 15px; font-weight: 600; }
+  .status-line { font-size: 12.5px; color: var(--text-dim); }
+  .keyword-chip {
+    font-family: var(--mono);
+    background: var(--bg-raised);
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 12.5px;
+  }
+
+  .header-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: var(--bg-raised);
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    transition: background .15s ease;
+  }
+  .icon-btn:hover { background: var(--bg-raised-hover); }
+
+  /* ---------- main area: entries + wheel ---------- */
+  .main-area {
+    display: flex;
+    gap: 16px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-top: none;
+    border-radius: 0 0 14px 14px;
+    padding: 18px 22px;
+    flex-wrap: wrap;
+  }
+
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  /* the chat list sits in a recessed, darker well */
+  .entries-col {
+    background: var(--bg-well);
+    flex: 0 1 300px;
+    min-width: 260px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .board-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .entry-count { font-size: 13.5px; color: var(--text-dim); }
+  .entry-count b { color: var(--text); font-size: 15px; }
+
+  .lock-toggle {
+    background: var(--bg-raised);
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    padding: 6px 11px;
+    border-radius: 7px;
+    font-size: 12.5px;
+  }
+  .lock-toggle:hover { background: var(--bg-raised-hover); }
+  .lock-toggle.locked { border-color: var(--danger); color: var(--danger); }
+
+  #entryList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1;
+    min-height: 120px;
+    max-height: 700px; /* roughly 20 rows before it scrolls */
+    overflow-y: auto;
+    border-radius: 8px;
+  }
+  #entryList::-webkit-scrollbar { width: 8px; }
+  #entryList::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; }
+
+  #entryList li {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    padding: 9px 4px;
+    border-bottom: 1px solid #262625;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn .25s ease;
+  }
+  #entryList li:last-child { border-bottom: none; }
+  #entryList li .n { color: var(--text-dim); width: 22px; flex-shrink: 0; }
+  #entryList li .u { font-weight: 600; }
+  #entryList li .u.role-mod { color: #39ff6e; }
+  #entryList li .u.role-vip { color: #ff6fae; }
+  #entryList li .u.role-sub { color: #ffd84d; }
+  #entryList li .u.role-regular { color: #ffffff; }
+  #entryList li .msg { color: var(--text-dim); }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .empty-state {
+    flex: 1;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 10px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13.5px;
+  }
+
+  /* ---------- name picker wheel ---------- */
+  .picker-panel {
+    flex: 1 1 400px;
+    min-width: 0;
+    padding: 24px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .result-banner {
+    width: 100%;
+    background: var(--bg-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+    margin-bottom: 26px;
+    display: none;
+  }
+  .result-label { font-size: 12px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .result-name { font-family: var(--mono); font-size: 26px; font-weight: 700; color: #f4f2ec; word-break: break-all; }
+
+  .wheel-area {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 22px;
+  }
+  .wheel-pointer {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-top: 30px solid var(--primary-hover);
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.6));
+    z-index: 2;
+  }
+  .wheel-wrap {
+    width: min(100%, clamp(300px, 65vmin, 760px));
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    box-shadow: 0 0 0 8px var(--bg-raised), 0 0 0 9px var(--line-strong), 0 14px 40px rgba(0,0,0,0.55);
+    transition: transform 4.2s cubic-bezier(0.14, 0.67, 0.2, 1);
+  }
+  .wheel-wrap svg { display: block; border-radius: 50%; }
+
+  .wheel-controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .wheel-controls button {
+    padding: 12px 22px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 650;
+  }
+  .primary-action { background: var(--primary); color: var(--on-primary); }
+  .primary-action:hover { background: var(--primary-hover); }
+  .primary-action:disabled { background: var(--disabled-bg); color: var(--disabled-text); cursor: not-allowed; }
+  .secondary-action { background: var(--bg-raised); border: 1px solid var(--line-strong); color: var(--text); }
+  .secondary-action:hover { background: var(--bg-raised-hover); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .eyebrow-dot.live { animation: none; }
+    #entryList li { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<header id="site-nav"></header>
+
+<main class="page">
+
+  <!-- ================= SETUP ================= -->
+  <div id="menu">
+    <p class="title">Random name selector</p>
+
+    <div class="field">
+      <label for="channelInput">Twitch channel</label>
+      <div class="field-row">
+        <span class="field-prefix">twitch.tv/</span>
+        <input type="text" id="channelInput" placeholder="channelname" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+
+    <div class="field" id="keywordField">
+      <label for="keywordInput">Keyword to watch for</label>
+      <div class="field-row">
+        <span class="field-prefix">#</span>
+        <input type="text" id="keywordInput" placeholder="giveaway" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+
+    <label class="any-msg-toggle">
+      <input type="checkbox" id="anyMessageToggle">
+      <span>No keyword — anyone who sends a message in chat joins</span>
+    </label>
+
+    <button class="start-btn" id="startBtn">Start watching chat</button>
+    <p class="menu-error" id="menuError"></p>
+  </div>
+
+  <!-- ================= GAME ================= -->
+  <div id="game">
+    <div class="game-header">
+      <div class="channel-info">
+        <div class="channel-name"><span class="eyebrow-dot" id="statusDot"></span><span id="channelLabel"></span></div>
+        <div class="status-line">Watching for <span class="keyword-chip" id="keywordLabel"></span> — <span id="statusText">connecting…</span></div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="toggleEntriesBtn">Hide entries</button>
+        <button class="icon-btn" id="backBtn">← Change channel</button>
+      </div>
+    </div>
+
+    <div class="main-area">
+      <div class="panel entries-col" id="entriesPanel">
+        <div class="board-row">
+          <div class="entry-count"><b id="entryCount">0</b> entered</div>
+          <button class="lock-toggle" id="lockBtn">Lock entries</button>
+        </div>
+        <ul id="entryList"></ul>
+        <div class="empty-state" id="emptyState">No one yet. Chatters who join show up here.</div>
+      </div>
+
+      <div class="panel picker-panel">
+        <div class="result-banner" id="resultBanner">
+          <div class="result-label">SELECTED</div>
+          <div class="result-name" id="resultName">—</div>
+        </div>
+
+        <div class="wheel-area">
+          <div class="wheel-pointer"></div>
+          <div class="wheel-wrap" id="wheelWrap">
+            <svg id="wheelSvg" viewBox="0 0 300 300" width="100%" height="100%"></svg>
+          </div>
+        </div>
+
+        <div class="wheel-controls">
+          <button class="primary-action" id="spinBtn" disabled>Spin the wheel</button>
+          <button class="secondary-action" id="resetBtn">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="site.js"></script>
+<script>
+
+(function () {
+  "use strict";
+
+  /* =========================================================
+     Twitch chat connection & entry collection
+     ========================================================= */
+
+  let ws = null;
+  let channel = "";
+  let keyword = "";
+  let anyMessageMode = false;
+  let entries = [];          // [{ user, message, role }]
+  let seenUsers = new Set();
+  let locked = false;
+  let reconnectTimer = null;
+  let intentionalClose = false;
+
+  // wheel state (declared up here so every function below can safely use it)
+  let hasSpun = false;
+  let spinning = false;
+  let wheelNames = [];
+  let wheelRotation = 0;
+  let spinTimer = null;
+
+  const menuEl = document.getElementById("menu");
+  const gameEl = document.getElementById("game");
+  const channelInput = document.getElementById("channelInput");
+  const keywordInput = document.getElementById("keywordInput");
+  const keywordField = document.getElementById("keywordField");
+  const anyMessageToggle = document.getElementById("anyMessageToggle");
+  const startBtn = document.getElementById("startBtn");
+  const menuError = document.getElementById("menuError");
+
+  const statusDot = document.getElementById("statusDot");
+  const channelLabel = document.getElementById("channelLabel");
+  const keywordLabel = document.getElementById("keywordLabel");
+  const statusText = document.getElementById("statusText");
+  const backBtn = document.getElementById("backBtn");
+  const toggleEntriesBtn = document.getElementById("toggleEntriesBtn");
+
+  const entriesPanel = document.getElementById("entriesPanel");
+  const entryCount = document.getElementById("entryCount");
+  const entryList = document.getElementById("entryList");
+  const emptyState = document.getElementById("emptyState");
+  const lockBtn = document.getElementById("lockBtn");
+
+  const resultBanner = document.getElementById("resultBanner");
+  const resultName = document.getElementById("resultName");
+  const wheelWrap = document.getElementById("wheelWrap");
+  const wheelSvg = document.getElementById("wheelSvg");
+  const spinBtn = document.getElementById("spinBtn");
+  const resetBtn = document.getElementById("resetBtn");
+
+  function collapseEntries() {
+    entriesPanel.style.display = "none";
+    toggleEntriesBtn.textContent = "Show entries";
+  }
+  function expandEntries() {
+    entriesPanel.style.display = "flex";
+    toggleEntriesBtn.textContent = "Hide entries";
+  }
+  toggleEntriesBtn.addEventListener("click", function () {
+    if (entriesPanel.style.display === "none") expandEntries();
+    else collapseEntries();
+  });
+
+  function sanitizeChannel(raw) {
+    return raw.trim().toLowerCase().replace(/^#/, "").replace(/^twitch\.tv\//, "");
+  }
+
+  function setStatus(text, mode) {
+    statusText.textContent = text;
+    statusDot.classList.toggle("live", mode === "live");
+    statusDot.style.background = mode === "error" ? "var(--danger)" : "";
+  }
+
+  function parseIRCTags(tagString) {
+    const tags = {};
+    tagString.split(";").forEach(pair => {
+      const idx = pair.indexOf("=");
+      if (idx === -1) return;
+      tags[pair.slice(0, idx)] = pair.slice(idx + 1);
+    });
+    return tags;
+  }
+
+  function containsKeyword(message, kw) {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp("(^|[^a-z0-9_])" + escaped + "([^a-z0-9_]|$)", "i");
+    return re.test(message);
+  }
+
+  // Badges reflect a chatter's role most reliably; mod/subscriber tags are a fallback.
+  function determineRole(tags) {
+    const badges = (tags.badges || "").toLowerCase();
+    if (badges.includes("moderator") || badges.includes("broadcaster") || tags.mod === "1") return "mod";
+    if (badges.includes("vip")) return "vip";
+    if (badges.includes("subscriber") || badges.includes("founder") || tags.subscriber === "1") return "sub";
+    return "regular";
+  }
+
+  function escapeHTML(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function addEntry(username, message, role) {
+    if (locked) return;
+    const key = username.toLowerCase();
+    if (seenUsers.has(key)) return;
+    seenUsers.add(key);
+    entries.push({ user: username, message, role: role || "regular" });
+    renderEntries();
+  }
+
+  function renderEntries() {
+    entryCount.textContent = entries.length;
+    emptyState.style.display = entries.length ? "none" : "flex";
+    entryList.style.display = entries.length ? "block" : "none";
+    entryList.innerHTML = "";
+    entries.forEach((e, i) => {
+      const li = document.createElement("li");
+      li.innerHTML =
+        '<span class="n">' + (i + 1) + '</span>' +
+        '<span class="u role-' + e.role + '">' + escapeHTML(e.user) + '</span>' +
+        '<span class="msg">has joined!</span>';
+      entryList.appendChild(li);
+    });
+    entryList.scrollTop = entryList.scrollHeight;
+
+    // keep the wheel in sync with the list until the first spin happens
+    if (!hasSpun && !spinning) refreshWheel();
+  }
+
+  function connect() {
+    intentionalClose = false;
+    setStatus("connecting…", "connecting");
+    ws = new WebSocket("wss://irc-ws.chat.twitch.tv:443");
+
+    ws.onopen = function () {
+      const anonNick = "justinfan" + Math.floor(10000 + Math.random() * 90000);
+      ws.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
+      ws.send("PASS SCHMOOPIIE");
+      ws.send("NICK " + anonNick);
+      ws.send("JOIN #" + channel);
+    };
+
+    ws.onmessage = function (evt) {
+      const lines = evt.data.split("\r\n").filter(Boolean);
+      lines.forEach(handleLine);
+    };
+
+    ws.onerror = function () {
+      setStatus("connection error", "error");
+    };
+
+    ws.onclose = function () {
+      if (intentionalClose) return;
+      setStatus("disconnected — reconnecting…", "error");
+      reconnectTimer = setTimeout(connect, 3000);
+    };
+  }
+
+  function handleLine(line) {
+    let tags = {};
+    let rest = line;
+
+    if (line.startsWith("@")) {
+      const spaceIdx = line.indexOf(" ");
+      tags = parseIRCTags(line.slice(1, spaceIdx));
+      rest = line.slice(spaceIdx + 1);
+    }
+
+    if (rest.startsWith("PING")) {
+      ws.send("PONG :tmi.twitch.tv");
+      return;
+    }
+
+    if (rest.includes(" 001 ")) {
+      setStatus("connected — watching #" + channel, "live");
+      return;
+    }
+
+    if (rest.includes(" NOTICE ") && rest.toLowerCase().includes("login authentication failed")) {
+      setStatus("could not connect anonymously", "error");
+      return;
+    }
+
+    const privmsgMatch = rest.match(/^:([^!]+)!\S+ PRIVMSG #([^ ]+) :(.*)$/);
+    if (privmsgMatch) {
+      const username = tags["display-name"] || privmsgMatch[1];
+      const msgChannel = privmsgMatch[2];
+      const message = privmsgMatch[3];
+
+      if (msgChannel.toLowerCase() !== channel) return;
+
+      if (anyMessageMode || containsKeyword(message, keyword)) {
+        addEntry(username, message, determineRole(tags));
+      }
+    }
+  }
+
+  function disconnect() {
+    intentionalClose = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (ws) {
+      try { ws.close(); } catch (e) {}
+    }
+  }
+
+  /* =========================================================
+     Name Picker wheel
+     ========================================================= */
+
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  // vivid colours that pop against the dark theme. They're ordered so neighbouring slices always
+  // differ strongly in hue, and each slice picks white or dark label text, whichever reads better.
+  const WHEEL_PALETTE = ["#cb4524", "#12828a", "#e3a82b", "#8f53d4", "#f28a30", "#1e844a", "#d4386a", "#2c74d4"];
+  const WHEEL_INK_LIGHT = "#ffffff";
+  const WHEEL_INK_DARK = "#1d1d1c";
+  const WHEEL_EDGE = "#272726";   // thin lines between slices
+  const WHEEL_HUB = "#1d1d1c";
+  const WHEEL_HUB_RING = "#a9a7a0";
+  const SPIN_DURATION_MS = 4300;
+
+  function hueOf(hex) {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    if (d === 0) return 0;
+    let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (h * 60 + 360) % 360;
+  }
+
+  function luminance(hex) {
+    const ch = [1, 3, 5].map(function (i) {
+      const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  }
+
+  function contrast(a, b) {
+    const la = luminance(a), lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  function inkFor(bg) {
+    return contrast(WHEEL_INK_LIGHT, bg) >= contrast(WHEEL_INK_DARK, bg) ? WHEEL_INK_LIGHT : WHEEL_INK_DARK;
+  }
+
+  function hueGap(a, b) {
+    const d = Math.abs(hueOf(a) - hueOf(b));
+    return Math.min(d, 360 - d);
+  }
+
+  function polarPoint(cx, cy, r, angleDeg) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return [cx + r * Math.sin(rad), cy - r * Math.cos(rad)];
+  }
+
+  function truncateName(name, max) {
+    return name.length > max ? name.slice(0, Math.max(1, max - 1)) + "…" : name;
+  }
+
+  /* ---- label layout ----
+     While slices are wide, names run across the slice (nice and readable).
+     Once they get too narrow for that, names are turned to run along the slice,
+     starting at the rim and heading toward the middle, so neighbours can't collide.
+     Text size and length are chosen from how much room a slice really has. */
+  const CHAR_W = 0.62;        // width of one monospace character, as a fraction of font size
+  const R_RIM = 146;          // outer edge of the wheel (in viewBox units)
+  const R_TEXT_END = 140;     // where along-the-slice text starts, just inside the rim
+  const R_TEXT_MIN = 26;      // keep text clear of the centre hub
+  const MIN_RADIAL_FONT = 4.5;
+
+  function chooseLabelLayout(names, segAngle) {
+    const segRad = (segAngle * Math.PI) / 180;
+    const longest = names.reduce(function (m, n) { return Math.max(m, n.length); }, 0);
+
+    // 1) across the slice
+    const acrossChars = Math.min(longest, 10);
+    const acrossFont = Math.max(7, Math.min(14, segAngle * 0.42));
+    const acrossRadius = R_RIM * 0.63;
+    const halfAngle = Math.min(segRad / 2, 1.396); // cap at 80° so tan() stays sane for 2–3 slices
+    const room = 2 * (acrossRadius - acrossFont / 2) * Math.tan(halfAngle);
+    if (acrossChars * CHAR_W * acrossFont <= room * 0.92) {
+      return { mode: "across", fontSize: acrossFont, chars: 10 };
+    }
+
+    // 2) along the slice: biggest font where the longest name still fits, and where the
+    //    slice is still thick enough at the inner end of the text
+    const thickness = 1.25 / segRad; // a text line's box is ~1.17x its font size, plus a little air
+    const L = Math.min(longest, 16);
+    let font = Math.min(14, R_TEXT_END / (CHAR_W * L + thickness), (R_TEXT_END - R_TEXT_MIN) / (CHAR_W * L));
+    let chars = L;
+    if (font < MIN_RADIAL_FONT) {
+      font = MIN_RADIAL_FONT;
+      chars = Math.floor(Math.min(
+        (R_TEXT_END - thickness * font) / (CHAR_W * font),
+        (R_TEXT_END - R_TEXT_MIN) / (CHAR_W * font)
+      ));
+    }
+    if (chars < 3) return { mode: "none" }; // too many slices for readable text; the winner banner still names the pick
+    return { mode: "along", fontSize: font, chars: chars };
+  }
+
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs).forEach(k => el.setAttribute(k, attrs[k]));
+    return el;
+  }
+
+  function clearWheel() {
+    while (wheelSvg.firstChild) wheelSvg.removeChild(wheelSvg.firstChild);
+  }
+
+  function renderWheelPlaceholder() {
+    clearWheel();
+    wheelSvg.appendChild(svgEl("circle", { cx: 150, cy: 150, r: 146, fill: "#1f1f1e", stroke: "#393937", "stroke-width": 2 }));
+    const line1 = svgEl("text", { x: 150, y: 142, fill: "#a5a39b", "font-size": 13, "font-family": "sans-serif", "text-anchor": "middle" });
+    line1.textContent = "Waiting for";
+    const line2 = svgEl("text", { x: 150, y: 160, fill: "#a5a39b", "font-size": 13, "font-family": "sans-serif", "text-anchor": "middle" });
+    line2.textContent = "2+ entrants…";
+    wheelSvg.appendChild(line1);
+    wheelSvg.appendChild(line2);
+  }
+
+  function renderWheel(names) {
+    clearWheel();
+    const n = names.length;
+    const segAngle = 360 / n;
+    const cx = 150, cy = 150, r = 146;
+
+    const colors = names.map(function (_, i) { return WHEEL_PALETTE[i % WHEEL_PALETTE.length]; });
+    if (n > 2) {
+      // the last slice sits next to the first one, which the repeating palette doesn't account for;
+      // if it ends up too similar to either neighbour, give it the colour that stands out most from both
+      const gapTo = function (c) { return Math.min(hueGap(c, colors[0]), hueGap(c, colors[n - 2])); };
+      if (gapTo(colors[n - 1]) < 40) {
+        colors[n - 1] = WHEEL_PALETTE.reduce(function (best, c) { return gapTo(c) > gapTo(best) ? c : best; });
+      }
+    }
+
+    for (let i = 0; i < n; i++) {
+      const [x1, y1] = polarPoint(cx, cy, r, i * segAngle);
+      const [x2, y2] = polarPoint(cx, cy, r, (i + 1) * segAngle);
+      const largeArc = segAngle > 180 ? 1 : 0;
+      wheelSvg.appendChild(svgEl("path", {
+        d: "M " + cx + " " + cy + " L " + x1 + " " + y1 + " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2 + " " + y2 + " Z",
+        fill: colors[i],
+        stroke: WHEEL_EDGE,
+        "stroke-width": 2
+      }));
+    }
+
+    const layout = chooseLabelLayout(names, segAngle);
+    if (layout.mode !== "none") {
+      for (let i = 0; i < n; i++) {
+        const midA = i * segAngle + segAngle / 2;
+        const label = truncateName(names[i], layout.chars);
+        let attrs;
+
+        if (layout.mode === "across") {
+          const [lx, ly] = polarPoint(cx, cy, r * 0.63, midA);
+          attrs = {
+            x: lx, y: ly,
+            "text-anchor": "middle",
+            transform: "rotate(" + midA + " " + lx + " " + ly + ")"
+          };
+        } else if (midA < 180) {
+          // right half: text ends at the rim and reads left to right
+          attrs = {
+            x: cx + R_TEXT_END, y: cy,
+            "text-anchor": "end",
+            transform: "rotate(" + (midA - 90) + " " + cx + " " + cy + ")"
+          };
+        } else {
+          // left half: flipped so the text is never upside down; it starts at the rim
+          attrs = {
+            x: cx - R_TEXT_END, y: cy,
+            "text-anchor": "start",
+            transform: "rotate(" + (midA + 90) + " " + cx + " " + cy + ")"
+          };
+        }
+
+        const text = svgEl("text", Object.assign({
+          fill: inkFor(colors[i]),
+          "font-size": layout.fontSize,
+          "font-family": "monospace",
+          "font-weight": 700,
+          "dominant-baseline": "middle"
+        }, attrs));
+        text.textContent = label;
+        wheelSvg.appendChild(text);
+      }
+    }
+
+    wheelSvg.appendChild(svgEl("circle", { cx: cx, cy: cy, r: 15, fill: WHEEL_HUB, stroke: WHEEL_HUB_RING, "stroke-width": 3 }));
+  }
+
+  function snapWheelToStart() {
+    wheelRotation = 0;
+    wheelWrap.style.transition = "none";
+    wheelWrap.style.transform = "rotate(0deg)";
+    void wheelWrap.offsetWidth; // force reflow so the next spin animates normally
+    wheelWrap.style.transition = "";
+  }
+
+  function refreshWheel() {
+    wheelNames = entries.map(e => e.user);
+    if (wheelNames.length >= 2) renderWheel(wheelNames);
+    else renderWheelPlaceholder();
+    spinBtn.disabled = wheelNames.length < 2 || spinning;
+  }
+
+  function spinWheel() {
+    if (spinning || wheelNames.length < 2) return;
+
+    // the wheel is fixed from the first spin on, so lock the list and tuck it away
+    if (!locked) {
+      locked = true;
+      lockBtn.textContent = "Entries locked";
+      lockBtn.classList.add("locked");
+    }
+    hasSpun = true;
+    spinning = true;
+    spinBtn.disabled = true;
+    resultBanner.style.display = "none";
+    collapseEntries();
+
+    const n = wheelNames.length;
+    const segAngle = 360 / n;
+    const winnerIndex = Math.floor(Math.random() * n);
+    const centerAngle = winnerIndex * segAngle + segAngle / 2;
+    const targetOffset = ((-centerAngle % 360) + 360) % 360;
+
+    const baseline = Math.ceil((wheelRotation + 1) / 360) * 360;
+    let newRotation = baseline + 5 * 360 + targetOffset;
+    while (newRotation <= wheelRotation) newRotation += 360;
+    wheelRotation = newRotation;
+
+    wheelWrap.style.transform = "rotate(" + wheelRotation + "deg)";
+
+    spinTimer = setTimeout(function () {
+      resultName.textContent = wheelNames[winnerIndex];
+      resultBanner.style.display = "block";
+      spinning = false;
+      spinTimer = null;
+      spinBtn.disabled = false;
+      spinBtn.textContent = "Spin again";
+    }, SPIN_DURATION_MS);
+  }
+
+  function resetWheel() {
+    if (spinTimer) clearTimeout(spinTimer);
+    spinTimer = null;
+    spinning = false;
+    hasSpun = false;
+    locked = false;
+    lockBtn.textContent = "Lock entries";
+    lockBtn.classList.remove("locked");
+    resultBanner.style.display = "none";
+    spinBtn.textContent = "Spin the wheel";
+    expandEntries();
+    snapWheelToStart();
+    refreshWheel();
+  }
+
+  spinBtn.addEventListener("click", spinWheel);
+  resetBtn.addEventListener("click", resetWheel);
+
+  lockBtn.addEventListener("click", function () {
+    if (hasSpun) return; // stays locked until the wheel is reset
+    locked = !locked;
+    lockBtn.textContent = locked ? "Entries locked" : "Lock entries";
+    lockBtn.classList.toggle("locked", locked);
+  });
+
+  /* =========================================================
+     Screen transitions & menu
+     ========================================================= */
+
+  function showGame() {
+    menuEl.style.display = "none";
+    gameEl.style.display = "block";
+    channelLabel.textContent = "#" + channel;
+    keywordLabel.textContent = anyMessageMode ? "anyone who chats" : keyword;
+  }
+
+  function showMenu() {
+    disconnect();
+    entries = [];
+    seenUsers = new Set();
+    resetWheel();
+    renderEntries();
+    gameEl.style.display = "none";
+    menuEl.style.display = "block";
+  }
+
+  startBtn.addEventListener("click", function () {
+    const rawChannel = sanitizeChannel(channelInput.value);
+    const rawKeyword = keywordInput.value.trim();
+    anyMessageMode = anyMessageToggle.checked;
+
+    menuError.style.display = "none";
+
+    if (!rawChannel) {
+      menuError.textContent = "Enter a Twitch channel name.";
+      menuError.style.display = "block";
+      return;
+    }
+    if (!anyMessageMode && !rawKeyword) {
+      menuError.textContent = "Enter a keyword to watch for, or check the box below to skip it.";
+      menuError.style.display = "block";
+      return;
+    }
+
+    channel = rawChannel;
+    keyword = rawKeyword;
+
+    showGame();
+    connect();
+  });
+
+  anyMessageToggle.addEventListener("change", function () {
+    const on = anyMessageToggle.checked;
+    keywordField.classList.toggle("disabled", on);
+    keywordInput.disabled = on;
+  });
+
+  [channelInput, keywordInput].forEach(el => {
+    el.addEventListener("keydown", e => {
+      if (e.key === "Enter") startBtn.click();
+    });
+  });
+
+  backBtn.addEventListener("click", showMenu);
+
+  renderEntries();
+
+})();
+</script>
+
+</body>
+</html>

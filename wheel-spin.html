@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wheel spin — Snejpen.tools</title>
+<link rel="stylesheet" href="site.css">
+<style>
+  /* Styles that only this page needs. Shared styles live in site.css */
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) 1fr;
+    gap: 20px;
+    align-items: stretch;
+  }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .text-panel { display: flex; flex-direction: column; }
+  .panel h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.01em; }
+  .panel .hint { margin: 0 0 14px; font-size: 13px; color: var(--text-dim); line-height: 1.45; }
+
+  textarea {
+    display: block;
+    width: 100%;
+    flex: 1;                /* fills the panel, so it's as tall as the wheel area */
+    min-height: 240px;
+    resize: none;
+    background: var(--bg-input);
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  textarea:focus-visible { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px rgba(191, 189, 182, 0.16); }
+  textarea::placeholder { color: var(--text-faint); }
+  textarea:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .list-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .remove-toggle { display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; color: var(--text); font-size: 13px; }
+  .remove-toggle input { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; margin: 0; }
+  .save-warning { margin: 8px 0 0; font-size: 12.5px; color: var(--danger); display: none; }
+
+  .result-banner {
+    width: 100%;
+    background: var(--bg-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 26px;
+    visibility: hidden;
+  }
+  .result-banner.show { visibility: visible; }
+  .result-label { font-size: 12px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .result-name { font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--text); word-break: break-word; }
+
+  .wheel-area {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 22px;
+  }
+  .wheel-pointer {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-top: 30px solid var(--primary-hover);
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.6));
+    z-index: 2;
+  }
+  .wheel-wrap {
+    width: min(100%, clamp(300px, 65vmin, 760px));
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    box-shadow: 0 0 0 8px var(--bg-raised), 0 0 0 9px var(--line-strong), 0 14px 40px rgba(0,0,0,0.55);
+    transition: transform 4.2s cubic-bezier(0.14, 0.67, 0.2, 1);
+  }
+  .wheel-wrap svg { display: block; border-radius: 50%; }
+
+  .wheel-controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .wheel-controls button {
+    padding: 12px 22px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 650;
+  }
+  .primary-action { background: var(--primary); color: var(--on-primary); }
+  .primary-action:hover { background: var(--primary-hover); }
+  .primary-action:disabled { background: var(--disabled-bg); color: var(--disabled-text); cursor: not-allowed; }
+  .secondary-action { background: var(--bg-raised); border: 1px solid var(--line-strong); color: var(--text); }
+  .secondary-action:hover { background: var(--bg-raised-hover); }
+
+  .small-action { padding: 6px 12px; border-radius: 7px; font-size: 12.5px; background: var(--bg-raised); border: 1px solid var(--line-strong); color: var(--text); }
+  .small-action:hover { background: var(--bg-raised-hover); }
+</style>
+</head>
+<body>
+
+<header id="site-nav"></header>
+
+<main class="page">
+  <div class="layout">
+
+    <section class="panel text-panel">
+      <h1>Wheel spin</h1>
+      <p class="hint">Type your options, one per line. They appear on the wheel as you type and are saved on this device, so they're still here next time.</p>
+      <label for="optionsInput" class="sr-only" style="position:absolute;left:-9999px">Wheel options</label>
+      <textarea id="optionsInput" spellcheck="false" placeholder="Pizza&#10;Sushi&#10;Tacos&#10;Burgers"></textarea>
+      <div class="list-foot">
+        <label class="remove-toggle"><input type="checkbox" id="removeWinnerToggle"><span>Remove winner from the list</span></label>
+        <button class="small-action" id="clearBtn" type="button">Clear all</button>
+      </div>
+      <p class="save-warning" id="saveWarning">Couldn't save in this browser, so the list won't be kept.</p>
+    </section>
+
+    <section class="panel">
+      <div class="result-banner" id="resultBanner" aria-live="polite">
+        <div class="result-label">SELECTED</div>
+        <div class="result-name" id="resultName">—</div>
+      </div>
+
+      <div class="wheel-area">
+        <div class="wheel-pointer"></div>
+        <div class="wheel-wrap" id="wheelWrap">
+          <svg id="wheelSvg" viewBox="0 0 300 300" width="100%" height="100%"></svg>
+        </div>
+      </div>
+
+      <div class="wheel-controls">
+        <button class="primary-action" id="spinBtn" disabled>Spin the wheel</button>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="site.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "snejpenWheelSpinOptions";
+  const REMOVE_KEY = "snejpenWheelSpinRemoveWinner";
+
+  const optionsInput = document.getElementById("optionsInput");
+  const removeWinnerToggle = document.getElementById("removeWinnerToggle");
+  const saveWarning = document.getElementById("saveWarning");
+  const clearBtn = document.getElementById("clearBtn");
+  const resultBanner = document.getElementById("resultBanner");
+  const resultName = document.getElementById("resultName");
+  const wheelWrap = document.getElementById("wheelWrap");
+  const wheelSvg = document.getElementById("wheelSvg");
+  const spinBtn = document.getElementById("spinBtn");
+
+  let wheelNames = [];
+  let wheelRotation = 0;
+  let spinning = false;
+  let spinTimer = null;
+
+  /* =========================================================
+     Wheel drawing (same wheel as the Random name selector)
+     ========================================================= */
+
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  // vivid colours that pop against the dark theme. They're ordered so neighbouring slices always
+  // differ strongly in hue, and each slice picks white or dark label text, whichever reads better.
+  const WHEEL_PALETTE = ["#cb4524", "#12828a", "#e3a82b", "#8f53d4", "#f28a30", "#1e844a", "#d4386a", "#2c74d4"];
+  const WHEEL_INK_LIGHT = "#ffffff";
+  const WHEEL_INK_DARK = "#1d1d1c";
+  const WHEEL_EDGE = "#272726";   // thin lines between slices
+  const WHEEL_HUB = "#1d1d1c";
+  const WHEEL_HUB_RING = "#a9a7a0";
+  const SPIN_DURATION_MS = 4300;
+
+  function hueOf(hex) {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    if (d === 0) return 0;
+    let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (h * 60 + 360) % 360;
+  }
+
+  function luminance(hex) {
+    const ch = [1, 3, 5].map(function (i) {
+      const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  }
+
+  function contrast(a, b) {
+    const la = luminance(a), lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  function inkFor(bg) {
+    return contrast(WHEEL_INK_LIGHT, bg) >= contrast(WHEEL_INK_DARK, bg) ? WHEEL_INK_LIGHT : WHEEL_INK_DARK;
+  }
+
+  function hueGap(a, b) {
+    const d = Math.abs(hueOf(a) - hueOf(b));
+    return Math.min(d, 360 - d);
+  }
+
+  function polarPoint(cx, cy, r, angleDeg) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return [cx + r * Math.sin(rad), cy - r * Math.cos(rad)];
+  }
+
+  function truncateName(name, max) {
+    return name.length > max ? name.slice(0, Math.max(1, max - 1)) + "…" : name;
+  }
+
+  /* ---- label layout ----
+     While slices are wide, names run across the slice (nice and readable).
+     Once they get too narrow for that, names are turned to run along the slice,
+     starting at the rim and heading toward the middle, so neighbours can't collide.
+     Text size and length are chosen from how much room a slice really has. */
+  const CHAR_W = 0.62;        // width of one monospace character, as a fraction of font size
+  const R_RIM = 146;          // outer edge of the wheel (in viewBox units)
+  const R_TEXT_END = 140;     // where along-the-slice text starts, just inside the rim
+  const R_TEXT_MIN = 26;      // keep text clear of the centre hub
+  const MIN_RADIAL_FONT = 4.5;
+
+  function chooseLabelLayout(names, segAngle) {
+    const segRad = (segAngle * Math.PI) / 180;
+    const longest = names.reduce(function (m, n) { return Math.max(m, n.length); }, 0);
+
+    // this wheel always runs the text along the slice, which leaves room for much longer options
+
+    // 2) along the slice: biggest font where the longest name still fits, and where the
+    //    slice is still thick enough at the inner end of the text
+    const thickness = 1.25 / segRad; // a text line's box is ~1.17x its font size, plus a little air
+    const L = Math.min(longest, 34);
+    let font = Math.min(14, R_TEXT_END / (CHAR_W * L + thickness), (R_TEXT_END - R_TEXT_MIN) / (CHAR_W * L));
+    let chars = L;
+    if (font < MIN_RADIAL_FONT) {
+      font = MIN_RADIAL_FONT;
+      chars = Math.floor(Math.min(
+        (R_TEXT_END - thickness * font) / (CHAR_W * font),
+        (R_TEXT_END - R_TEXT_MIN) / (CHAR_W * font)
+      ));
+    }
+    if (chars < 3) return { mode: "none" }; // too many slices for readable text; the winner banner still names the pick
+    return { mode: "along", fontSize: font, chars: chars };
+  }
+
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs).forEach(k => el.setAttribute(k, attrs[k]));
+    return el;
+  }
+
+  function clearWheel() {
+    while (wheelSvg.firstChild) wheelSvg.removeChild(wheelSvg.firstChild);
+  }
+
+  function renderWheelPlaceholder() {
+    clearWheel();
+    wheelSvg.appendChild(svgEl("circle", { cx: 150, cy: 150, r: 146, fill: "#1f1f1e", stroke: "#393937", "stroke-width": 2 }));
+    const line1 = svgEl("text", { x: 150, y: 142, fill: "#a5a39b", "font-size": 13, "font-family": "sans-serif", "text-anchor": "middle" });
+    line1.textContent = "Add an option";
+    const line2 = svgEl("text", { x: 150, y: 160, fill: "#a5a39b", "font-size": 13, "font-family": "sans-serif", "text-anchor": "middle" });
+    line2.textContent = "to fill the wheel";
+    wheelSvg.appendChild(line1);
+    wheelSvg.appendChild(line2);
+  }
+
+  function renderWheel(names) {
+    clearWheel();
+    const n = names.length;
+    const segAngle = 360 / n;
+    const cx = 150, cy = 150, r = 146;
+
+    const colors = names.map(function (_, i) { return WHEEL_PALETTE[i % WHEEL_PALETTE.length]; });
+    if (n > 2) {
+      // the last slice sits next to the first one, which the repeating palette doesn't account for;
+      // if it ends up too similar to either neighbour, give it the colour that stands out most from both
+      const gapTo = function (c) { return Math.min(hueGap(c, colors[0]), hueGap(c, colors[n - 2])); };
+      if (gapTo(colors[n - 1]) < 40) {
+        colors[n - 1] = WHEEL_PALETTE.reduce(function (best, c) { return gapTo(c) > gapTo(best) ? c : best; });
+      }
+    }
+
+    if (n === 1) {
+      // a single option is the whole wheel (an arc can't start and end at the same point)
+      wheelSvg.appendChild(svgEl("circle", { cx: cx, cy: cy, r: r, fill: colors[0], stroke: WHEEL_EDGE, "stroke-width": 2 }));
+    }
+    for (let i = 0; i < (n === 1 ? 0 : n); i++) {
+      const [x1, y1] = polarPoint(cx, cy, r, i * segAngle);
+      const [x2, y2] = polarPoint(cx, cy, r, (i + 1) * segAngle);
+      const largeArc = segAngle > 180 ? 1 : 0;
+      wheelSvg.appendChild(svgEl("path", {
+        d: "M " + cx + " " + cy + " L " + x1 + " " + y1 + " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2 + " " + y2 + " Z",
+        fill: colors[i],
+        stroke: WHEEL_EDGE,
+        "stroke-width": 2
+      }));
+    }
+
+    const layout = chooseLabelLayout(names, segAngle);
+    if (layout.mode !== "none") {
+      for (let i = 0; i < n; i++) {
+        const midA = i * segAngle + segAngle / 2;
+        const label = truncateName(names[i], layout.chars);
+        let attrs;
+
+        if (layout.mode === "across") {
+          const [lx, ly] = polarPoint(cx, cy, r * 0.63, midA);
+          attrs = {
+            x: lx, y: ly,
+            "text-anchor": "middle",
+            transform: "rotate(" + midA + " " + lx + " " + ly + ")"
+          };
+        } else if (midA < 180) {
+          // right half: text ends at the rim and reads left to right
+          attrs = {
+            x: cx + R_TEXT_END, y: cy,
+            "text-anchor": "end",
+            transform: "rotate(" + (midA - 90) + " " + cx + " " + cy + ")"
+          };
+        } else {
+          // left half: flipped so the text is never upside down; it starts at the rim
+          attrs = {
+            x: cx - R_TEXT_END, y: cy,
+            "text-anchor": "start",
+            transform: "rotate(" + (midA + 90) + " " + cx + " " + cy + ")"
+          };
+        }
+
+        const text = svgEl("text", Object.assign({
+          fill: inkFor(colors[i]),
+          "font-size": layout.fontSize,
+          "font-family": "monospace",
+          "font-weight": 700,
+          "dominant-baseline": "middle"
+        }, attrs));
+        text.textContent = label;
+        wheelSvg.appendChild(text);
+      }
+    }
+
+    wheelSvg.appendChild(svgEl("circle", { cx: cx, cy: cy, r: 15, fill: WHEEL_HUB, stroke: WHEEL_HUB_RING, "stroke-width": 3 }));
+  }
+
+  function snapWheelToStart() {
+    wheelRotation = 0;
+    wheelWrap.style.transition = "none";
+    wheelWrap.style.transform = "rotate(0deg)";
+    void wheelWrap.offsetWidth; // force reflow so the next spin animates normally
+    wheelWrap.style.transition = "";
+  }
+
+  /* =========================================================
+     Options: one per line, saved in this browser
+     ========================================================= */
+
+  function parseOptions(text) {
+    return text.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+  }
+
+  // take one option (by its position among the non-blank lines) out of the text box
+  function removeOption(position) {
+    const lines = optionsInput.value.split(/\r?\n/);
+    let seen = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim()) seen++;
+      if (seen === position) { lines.splice(i, 1); break; }
+    }
+    optionsInput.value = lines.join("\n");
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, optionsInput.value);
+      saveWarning.style.display = "none";
+    } catch (err) {
+      saveWarning.style.display = "block";
+    }
+  }
+
+  function refreshWheel() {
+    wheelNames = parseOptions(optionsInput.value);
+    if (wheelNames.length >= 1) renderWheel(wheelNames);
+    else renderWheelPlaceholder();
+    spinBtn.disabled = wheelNames.length < 1 || spinning;
+  }
+
+  let saveTimer = null;
+  optionsInput.addEventListener("input", function () {
+    resultBanner.classList.remove("show");
+    snapWheelToStart();
+    refreshWheel();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 250);
+  });
+  window.addEventListener("pagehide", function () { clearTimeout(saveTimer); save(); });
+
+  clearBtn.addEventListener("click", function () {
+    if (!optionsInput.value.trim()) return;
+    if (!window.confirm("Remove all options from the wheel?")) return;
+    optionsInput.value = "";
+    resultBanner.classList.remove("show");
+    snapWheelToStart();
+    refreshWheel();
+    save();
+    optionsInput.focus();
+  });
+
+  /* =========================================================
+     Spinning
+     ========================================================= */
+
+  function spinWheel() {
+    if (spinning || wheelNames.length < 1) return;
+
+    spinning = true;
+    spinBtn.disabled = true;
+    optionsInput.disabled = true;     // the wheel can't change mid-spin
+    clearBtn.disabled = true;
+    resultBanner.classList.remove("show");
+
+    const n = wheelNames.length;
+    const segAngle = 360 / n;
+    const winnerIndex = Math.floor(Math.random() * n);
+    const centerAngle = winnerIndex * segAngle + segAngle / 2;
+    const targetOffset = ((-centerAngle % 360) + 360) % 360;
+
+    const baseline = Math.ceil((wheelRotation + 1) / 360) * 360;
+    let newRotation = baseline + 5 * 360 + targetOffset;
+    while (newRotation <= wheelRotation) newRotation += 360;
+    wheelRotation = newRotation;
+
+    wheelWrap.style.transform = "rotate(" + wheelRotation + "deg)";
+
+    spinTimer = setTimeout(function () {
+      resultName.textContent = wheelNames[winnerIndex];
+      resultBanner.classList.add("show");
+      spinBtn.textContent = "Spin again";
+
+      function finish() {
+        spinning = false;
+        spinTimer = null;
+        optionsInput.disabled = false;
+        clearBtn.disabled = false;
+        refreshWheel();       // also sets the Spin button's state
+      }
+
+      if (removeWinnerToggle.checked) {
+        // let the wheel sit on the winner for a moment, then take it off the list
+        spinTimer = setTimeout(function () {
+          removeOption(winnerIndex);
+          snapWheelToStart();
+          save();
+          finish();
+        }, 1500);
+      } else {
+        finish();
+      }
+    }, SPIN_DURATION_MS);
+  }
+  spinBtn.addEventListener("click", spinWheel);
+
+  /* =========================================================
+     Start-up: bring back what was saved last time
+     ========================================================= */
+
+  removeWinnerToggle.addEventListener("change", function () {
+    try { localStorage.setItem(REMOVE_KEY, removeWinnerToggle.checked ? "1" : "0"); } catch (err) {}
+  });
+
+  try {
+    optionsInput.value = localStorage.getItem(STORAGE_KEY) || "";
+    removeWinnerToggle.checked = localStorage.getItem(REMOVE_KEY) === "1";
+  } catch (err) {}
+  refreshWheel();
+})();
+</script>
+</body>
+</html>
