@@ -287,10 +287,11 @@
   const SiteAudio = (function () {
     let enabled = false;
     try { enabled = localStorage.getItem(AUDIO_KEY) === "1"; } catch (err) {}
+    const VOLUME = 0.7;                       // 30% quieter than the files' full volume
     let spinSound = null, winSound = null, fadeTimer = null;
 
     function active() { return enabled && document.body.classList.contains("buttsoap"); }
-    function load(path) { const a = new Audio(path); a.preload = "auto"; return a; }
+    function load(path) { const a = new Audio(path); a.preload = "auto"; a.volume = VOLUME; return a; }
 
     function stopSpin() {
       if (!spinSound) return;
@@ -298,8 +299,8 @@
       const snd = spinSound;
       let v = snd.volume;
       fadeTimer = setInterval(function () {      // quick fade so the sound doesn't cut off with a click
-        v -= 0.2;
-        if (v <= 0) { clearInterval(fadeTimer); snd.pause(); snd.currentTime = 0; snd.volume = 1; }
+        v -= 0.14;
+        if (v <= 0) { clearInterval(fadeTimer); snd.pause(); snd.currentTime = 0; snd.volume = VOLUME; }
         else snd.volume = v;
       }, 25);
     }
@@ -322,7 +323,7 @@
         if (!active()) return;
         clearInterval(fadeTimer);
         spinSound = spinSound || load("Sounds/HamburgerSpin.mp3");
-        spinSound.volume = 1;
+        spinSound.volume = VOLUME;
         spinSound.currentTime = 0;
         const p = spinSound.play(); if (p && p.catch) p.catch(function () {});
       },
@@ -330,6 +331,7 @@
         if (!active()) return;
         stopSpin();
         winSound = winSound || load("Sounds/HamburgerWin.mp3");
+        winSound.volume = VOLUME;
         winSound.currentTime = 0;
         const p = winSound.play(); if (p && p.catch) p.catch(function () {});
       }
