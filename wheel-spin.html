@@ -442,19 +442,13 @@
             "text-anchor": "middle",
             transform: "rotate(" + midA + " " + lx + " " + ly + ")"
           };
-        } else if (midA < 180) {
-          // right half: text ends at the rim and reads left to right
+        } else {
+          // every label is set the same way, whichever slice it's on: it reads from the middle outward
+          // and ends at the rim. The wheel is always turning, so there's no "right way up" to protect.
           attrs = {
             x: cx + R_TEXT_END, y: cy,
             "text-anchor": "end",
             transform: "rotate(" + (midA - 90) + " " + cx + " " + cy + ")"
-          };
-        } else {
-          // left half: flipped so the text is never upside down; it starts at the rim
-          attrs = {
-            x: cx - R_TEXT_END, y: cy,
-            "text-anchor": "start",
-            transform: "rotate(" + (midA + 90) + " " + cx + " " + cy + ")"
           };
         }
 
