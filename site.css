@@ -363,7 +363,8 @@ body.has-art {
   --art-w: min(calc(var(--art-h) * var(--art-ratio, 0.763)), var(--art-cap, 38vw));   /* picture width / height, set per theme */
 }
 /* keep the menus in the middle so the pictures get the left and right sides */
-body.has-art .page { position: relative; z-index: 1; max-width: max(300px, min(1100px, calc(100vw - 1.8 * var(--art-w) - 24px))); }
+/* the pictures are pure background: the page keeps its normal width and sits on top of them */
+body.has-art .page { position: relative; z-index: 1; }
 
 .theme-side {
   display: none;
@@ -383,7 +384,6 @@ body.has-art .theme-side { display: block; }
 .theme-side.right { right: calc(var(--art-w) * -0.1); transform: scaleX(-1); }
 @media (max-width: 900px) {
   .theme-side { opacity: 0.3; }
-  body.has-art .page { max-width: 1100px; }
 }
 
 /* ---------- Buttsoap theme (hamburger colours) ---------- */
