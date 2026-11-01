@@ -151,14 +151,22 @@
   .small-action:hover { background: var(--bg-raised-hover); }
 
   /* ---------- second wheel ---------- */
-  .page.wide { max-width: 1400px; }
+  .page.wide { max-width: 1500px; }
+  /* with two wheels they sit side by side on top, nearly as big as a lone wheel; the editors go underneath */
+  .two { grid-template-columns: 1fr; }
+  .two .wheels-panel { order: -1; }
+  .two .text-panel h1, .two .text-panel .hint { display: none; }
+  .editors { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .two .editors { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: none; }
+  .two .editor + .editor { margin-top: 0; }
+  .two textarea, .two .rows { flex: none; height: 170px; min-height: 0; }
+  @media (max-width: 800px) { .two .editors { grid-template-columns: 1fr; } }
   .editor { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .editor-title { display: none; margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
   .two .editor-title { display: block; }
   .editor[hidden] { display: none; }
-  .two .editor + .editor { margin-top: 12px; }
-  .two textarea, .two .rows { min-height: 130px; }
-  .wheels { display: flex; gap: 24px; align-items: flex-start; }
+  .wheels { display: flex; gap: 24px; align-items: flex-start; margin-bottom: 4px; }
+  .wheel-unit .wheel-controls { margin-top: 0; }
   .wheel-unit { flex: 1 1 0; min-width: 0; }
   .wheel-unit[hidden] { display: none; }
   .wheel-unit .result-name { font-size: 22px; }
@@ -175,6 +183,7 @@
       <h1>Wheel spin</h1>
       <p class="hint">Type your options, one per line. They appear on the wheel as you type and are saved on this device, so they're still here next time.</p>
 
+      <div class="editors">
       <div class="editor" data-wheel="0">
         <div class="editor-title">Wheel 1</div>
         <textarea spellcheck="false" aria-label="Wheel 1 options" placeholder="Pizza&#10;Sushi&#10;Tacos&#10;Burgers"></textarea>
@@ -184,6 +193,7 @@
         <div class="editor-title">Wheel 2</div>
         <textarea spellcheck="false" aria-label="Wheel 2 options" placeholder="Movie&#10;Walk&#10;Game night"></textarea>
         <div class="rows" hidden></div>
+      </div>
       </div>
 
       <div class="list-foot">
@@ -198,7 +208,7 @@
       <p class="save-warning" id="saveWarning">Couldn't save in this browser, so the list won't be kept.</p>
     </section>
 
-    <section class="panel">
+    <section class="panel wheels-panel">
       <div class="wheels" id="wheels">
         <div class="wheel-unit" data-wheel="0">
           <div class="result-banner" aria-live="polite">
@@ -208,6 +218,9 @@
           <div class="wheel-area">
             <div class="wheel-pointer"></div>
             <div class="wheel-wrap"><svg viewBox="0 0 300 300" width="100%" height="100%"></svg></div>
+          </div>
+          <div class="wheel-controls">
+            <button class="primary-action spin-btn" type="button" disabled>Spin the wheel</button>
           </div>
         </div>
         <div class="wheel-unit" data-wheel="1" hidden>
@@ -219,12 +232,12 @@
             <div class="wheel-pointer"></div>
             <div class="wheel-wrap"><svg viewBox="0 0 300 300" width="100%" height="100%"></svg></div>
           </div>
+          <div class="wheel-controls">
+            <button class="primary-action spin-btn" type="button" disabled>Spin the wheel</button>
+          </div>
         </div>
       </div>
 
-      <div class="wheel-controls">
-        <button class="primary-action" id="spinBtn" disabled>Spin the wheel</button>
-      </div>
     </section>
 
   </div>
@@ -248,12 +261,10 @@
   const secondWheelToggle = document.getElementById("secondWheelToggle");
   const saveWarning = document.getElementById("saveWarning");
   const clearBtn = document.getElementById("clearBtn");
-  const spinBtn = document.getElementById("spinBtn");
 
   let useWeights = false;
   let secondOn = false;
-  let spinning = false;
-  let idleHold = false;
+  let spinningCount = 0;   // how many wheels are turning right now
   let wheels = [];
 
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -483,6 +494,9 @@
     const resultName = unit.querySelector(".result-name");
     const wheelWrap = unit.querySelector(".wheel-wrap");
     const wheelSvg = unit.querySelector("svg");
+    const spinBtn = unit.querySelector(".spin-btn");
+    let spinning = false;
+    let idleHold = false;
 
     let weights = [];                // saved weight for each text line (index = line number)
     let names = [], ws = [], lines = [], starts = [], spans = [];
@@ -545,6 +559,8 @@
       else startIdle();
       updateSpinButton();
     }
+
+    function updateSpinButton() { spinBtn.disabled = spinning || names.length < 1; }
 
     /* ---- saving ---- */
     function save() {
@@ -685,6 +701,41 @@
       normalize();
     }
 
+    function spin() {
+      if (spinning || names.length < 1) return;
+      spinning = true;
+      spinningCount++;
+      lockShared();
+      updateSpinButton();
+      setEditable(false);
+      beginSpin();
+      if (window.SiteAudio) SiteAudio.spin();
+
+      setTimeout(function () {
+        showWinner();
+        if (window.SiteAudio) SiteAudio.win();
+        spinBtn.textContent = "Spin again";
+
+        function finish() {
+          spinning = false;
+          spinningCount--;
+          lockShared();
+          setEditable(true);
+          idleHold = true;      // let the result sit under the pointer for a moment, then drift again
+          refresh();
+          setTimeout(function () { idleHold = false; startIdle(); }, IDLE_HOLD_MS);
+        }
+
+        if (removeWinnerToggle.checked) {
+          // let the wheel sit on the winner for a moment, then take it off the list
+          setTimeout(function () { removeWinner(); save(); finish(); }, 1500);
+        } else {
+          finish();
+        }
+      }, SPIN_DURATION_MS);
+    }
+    spinBtn.addEventListener("click", spin);
+
     function load() {
       try {
         optionsInput.value = localStorage.getItem(STORAGE_KEY) || "";
@@ -694,9 +745,8 @@
     }
 
     return {
-      refresh: refresh, save: save, showMode: showMode, load: load, setEditable: setEditable,
-      clearList: clearList, hasOptions: hasOptions, beginSpin: beginSpin, showWinner: showWinner,
-      removeWinner: removeWinner, startIdle: startIdle, normalize: normalize, hideBanner: function () { banner.classList.remove("show"); },
+      refresh: refresh, updateSpinButton: updateSpinButton, save: save, showMode: showMode, load: load, setEditable: setEditable,
+      clearList: clearList, hasOptions: hasOptions, startIdle: startIdle, normalize: normalize, hideBanner: function () { banner.classList.remove("show"); },
       isEmpty: function () { return !optionsInput.value.trim(); },
       focus: function () { optionsInput.focus(); }
     };
@@ -704,8 +754,12 @@
 
   function activeWheels() { return secondOn ? wheels : [wheels[0]]; }
   function saveAll() { wheels.forEach(function (w) { w.save(); }); }
-  function updateSpinButton() {
-    spinBtn.disabled = spinning || !activeWheels().some(function (w) { return w.hasOptions(); });
+  // the shared settings can't change while any wheel is turning
+  function lockShared() {
+    const busy = spinningCount > 0;
+    clearBtn.disabled = busy;
+    useWeightsToggle.disabled = busy;
+    secondWheelToggle.disabled = busy;
   }
 
   /* =========================================================
@@ -721,7 +775,6 @@
     page.classList.toggle("wide", on);
     wheels[0].refresh();            // the first wheel changes size when it shares the row
     if (on) wheels[1].refresh();
-    updateSpinButton();
   }
 
   secondWheelToggle.addEventListener("change", function () {
@@ -749,54 +802,6 @@
   });
 
   window.addEventListener("pagehide", function () { clearTimeout(saveTimer); saveAll(); });
-
-  function setEditableAll(on) {
-    wheels.forEach(function (w) { w.setEditable(on); });
-    clearBtn.disabled = !on;
-    useWeightsToggle.disabled = !on;
-    secondWheelToggle.disabled = !on;
-  }
-
-  /* =========================================================
-     Spinning: one button turns every active wheel at once
-     ========================================================= */
-
-  function spinAll() {
-    const going = activeWheels().filter(function (w) { return w.hasOptions(); });
-    if (spinning || !going.length) return;
-
-    spinning = true;
-    spinBtn.disabled = true;
-    setEditableAll(false);
-    going.forEach(function (w) { w.beginSpin(); });
-    if (window.SiteAudio) SiteAudio.spin();
-
-    setTimeout(function () {
-      going.forEach(function (w) { w.showWinner(); });
-      if (window.SiteAudio) SiteAudio.win();
-      spinBtn.textContent = "Spin again";
-
-      function finish() {
-        spinning = false;
-        setEditableAll(true);
-        idleHold = true;      // let the results sit under the pointers for a moment, then drift again
-        wheels.forEach(function (w) { w.refresh(); });
-        updateSpinButton();
-        setTimeout(function () { idleHold = false; wheels.forEach(function (w) { w.startIdle(); }); }, IDLE_HOLD_MS);
-      }
-
-      if (removeWinnerToggle.checked) {
-        // let the wheels sit on the winners for a moment, then take them off the lists
-        setTimeout(function () {
-          going.forEach(function (w) { w.removeWinner(); w.save(); });
-          finish();
-        }, 1500);
-      } else {
-        finish();
-      }
-    }, SPIN_DURATION_MS);
-  }
-  spinBtn.addEventListener("click", spinAll);
 
   /* =========================================================
      Start-up: bring back what was saved last time
