@@ -197,7 +197,7 @@
 
       <div class="list-foot">
         <div class="toggles">
-          <label class="remove-toggle"><input type="checkbox" id="useWeightsToggle"><span>Use weights</span></label>
+          <label class="remove-toggle"><input type="checkbox" id="useWeightsToggle" autocomplete="off"><span>Use weights</span></label>
           <label class="remove-toggle"><input type="checkbox" id="removeWinnerToggle"><span>Remove winner from the list</span></label>
           <div id="audioSlot"></div>
         </div>
@@ -494,16 +494,17 @@
       if (!arr || arr.every(function (n) { return n === arr[0]; })) return [];
       return arr;
     }
+    const oldUse = readText(USE_WEIGHTS_KEY) === "1";
     const wheels = [];
     wheels.push({
-      id: newId(), name: "Wheel 1",
+      id: newId(), name: "Wheel 1", useWeights: oldUse,
       text: readText("snejpenWheelSpinOptions"),
       weights: numbers(readText("snejpenWheelSpinWeightsV2")) || oldWeights(readText("snejpenWheelSpinWeights")) || []
     });
     const text2 = readText("snejpenWheelSpinOptions_2");
     if (readText("snejpenWheelSpinSecondWheel") === "1" || text2.trim()) {
       wheels.push({
-        id: newId(), name: "Wheel 2",
+        id: newId(), name: "Wheel 2", useWeights: oldUse,
         text: text2,
         weights: numbers(readText("snejpenWheelSpinWeightsV2_2")) || []
       });
@@ -519,7 +520,8 @@
           id: String(w.id || newId()),
           name: String(w.name || "Wheel " + (i + 1)).slice(0, MAX_NAME),
           text: typeof w.text === "string" ? w.text : "",
-          weights: Array.isArray(w.weights) ? w.weights : []
+          weights: Array.isArray(w.weights) ? w.weights : [],
+          useWeights: typeof w.useWeights === "boolean" ? w.useWeights : readText(USE_WEIGHTS_KEY) === "1"
         };
       });
       return { wheels: saved.wheels, current: saved.current };
@@ -608,6 +610,7 @@
   function commitCurrent() {   // copy what's on screen into the saved wheel
     const w = currentWheel();
     w.text = optionsInput.value;
+    w.useWeights = useWeights;
     w.weights = rawLines().map(function (_, n) { return weightAt(n); });
   }
   function saveNow() { clearTimeout(saveTimer); commitCurrent(); saveStore(); }
@@ -694,6 +697,8 @@
     const w = currentWheel();
     optionsInput.value = w.text;
     weights = w.weights.slice();
+    useWeights = !!w.useWeights;
+    useWeightsToggle.checked = useWeights;
     spinBtn.textContent = "Spin the wheel";
     resultBanner.classList.remove("show");
     idleHold = false;
@@ -741,7 +746,7 @@
     let n = 1;
     const taken = store.wheels.map(function (w) { return w.name; });
     while (taken.indexOf("Wheel " + n) !== -1) n++;
-    const w = { id: newId(), name: "Wheel " + n, text: "", weights: [] };
+    const w = { id: newId(), name: "Wheel " + n, text: "", weights: [], useWeights: false };
     store.wheels.push(w);
     store.current = w.id;
     saveStore();
@@ -797,7 +802,6 @@
     useWeights = useWeightsToggle.checked;
     showMode();
     saveNow();
-    try { localStorage.setItem(USE_WEIGHTS_KEY, useWeights ? "1" : "0"); } catch (err) {}
   });
 
   removeWinnerToggle.addEventListener("change", function () {
@@ -900,9 +904,7 @@
   if (!store.wheels.some(function (w) { return w.id === store.current; })) store.current = store.wheels[0].id;
   try {
     removeWinnerToggle.checked = localStorage.getItem(REMOVE_KEY) === "1";
-    useWeights = localStorage.getItem(USE_WEIGHTS_KEY) === "1";
   } catch (err) {}
-  useWeightsToggle.checked = useWeights;
   saveStore();             // writes the migrated data in the new format
   showWheel();
   renderPicker();

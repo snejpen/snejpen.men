@@ -54,9 +54,9 @@
         hidden: true,    // nav bar only: not listed on the main page
         corner: true,    // sits in the far right corner of the bar
         items: [
-          { label: "Toggle default theme", href: "#", icon: "🌑", action: "theme", theme: "default" },
-          { label: "Toggle Livx theme", href: "#", icon: "💖", action: "theme", theme: "livx" },
-          { label: "Toggle Buttsoap theme", href: "#", icon: "🍔", action: "theme", theme: "buttsoap" }
+          { label: "Use default theme", href: "#", icon: "🌑", action: "theme", theme: "default" },
+          { label: "Use skinny theme", href: "#", icon: "💖", action: "theme", theme: "livx" },
+          { label: "Use fat theme", href: "#", icon: "🍔", action: "theme", theme: "buttsoap" }
         ]
       }
     ]
