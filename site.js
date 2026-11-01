@@ -287,7 +287,7 @@
   const SiteAudio = (function () {
     let enabled = false;
     try { enabled = localStorage.getItem(AUDIO_KEY) === "1"; } catch (err) {}
-    const VOLUME = 0.7;                       // 30% quieter than the files' full volume
+    const VOLUME = 0.4;                       // 40% of the files' full volume
     let spinSound = null, winSound = null, fadeTimer = null;
 
     function active() { return enabled && document.body.classList.contains("buttsoap"); }
