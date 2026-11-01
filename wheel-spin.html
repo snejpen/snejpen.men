@@ -56,6 +56,36 @@
     font-size: 12.5px;
     color: var(--text-dim);
   }
+  .toggles { display: flex; flex-direction: column; gap: 8px; }
+  .rows[hidden], .weights-hint[hidden], textarea[hidden] { display: none; }
+  .weights-hint { margin: 0 0 8px; font-size: 12.5px; line-height: 1.4; color: var(--text-dim); }
+  .rows {
+    flex: 1 1 0;               /* same size as the text box, scrolls when there are many options */
+    min-height: 240px;
+    overflow-y: auto;
+    background: var(--bg-input);
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    padding: 8px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 76px 30px; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .row input[type="text"], .row input[type="number"] {
+    background: var(--bg-panel);
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13.5px;
+    padding: 8px 10px;
+    min-width: 0;
+    width: 100%;
+  }
+  .row input:focus-visible { outline: none; border-color: var(--focus); }
+  .row input:disabled, .row button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .row .del { background: transparent; color: var(--text-dim); border: 1px solid transparent; border-radius: 7px; height: 100%; font-size: 16px; line-height: 1; }
+  .row .del:hover { background: var(--bg-raised-hover); color: var(--text); }
+  .add-row { width: 100%; margin-top: 2px; padding: 8px; border-radius: 7px; border: 1px dashed var(--line-strong); background: transparent; color: var(--text-dim); font-size: 13px; }
+  .add-row:hover { background: var(--bg-raised-hover); color: var(--text); }
   .remove-toggle { display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; color: var(--text); font-size: 13px; }
   .remove-toggle input { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; margin: 0; }
   .save-warning { margin: 8px 0 0; font-size: 12.5px; color: var(--danger); display: none; }
@@ -131,9 +161,14 @@
       <h1>Wheel spin</h1>
       <p class="hint">Type your options, one per line. They appear on the wheel as you type and are saved on this device, so they're still here next time.</p>
       <label for="optionsInput" class="sr-only" style="position:absolute;left:-9999px">Wheel options</label>
+      <p class="weights-hint" id="weightsHint" hidden>Weight 1 is normal. A weight of 5 makes the slice 5 times bigger and 5 times as likely to win.</p>
       <textarea id="optionsInput" spellcheck="false" placeholder="Pizza&#10;Sushi&#10;Tacos&#10;Burgers"></textarea>
+      <div class="rows" id="rows" hidden></div>
       <div class="list-foot">
-        <label class="remove-toggle"><input type="checkbox" id="removeWinnerToggle"><span>Remove winner from the list</span></label>
+        <div class="toggles">
+          <label class="remove-toggle"><input type="checkbox" id="useWeightsToggle"><span>Use weights</span></label>
+          <label class="remove-toggle"><input type="checkbox" id="removeWinnerToggle"><span>Remove winner from the list</span></label>
+        </div>
         <button class="small-action" id="clearBtn" type="button">Clear all</button>
       </div>
       <p class="save-warning" id="saveWarning">Couldn't save in this browser, so the list won't be kept.</p>
@@ -167,9 +202,14 @@
 
   const STORAGE_KEY = "snejpenWheelSpinOptions";
   const REMOVE_KEY = "snejpenWheelSpinRemoveWinner";
+  const WEIGHTS_KEY = "snejpenWheelSpinWeights";
+  const USE_WEIGHTS_KEY = "snejpenWheelSpinUseWeights";
 
   const optionsInput = document.getElementById("optionsInput");
   const removeWinnerToggle = document.getElementById("removeWinnerToggle");
+  const useWeightsToggle = document.getElementById("useWeightsToggle");
+  const rowsEl = document.getElementById("rows");
+  const weightsHint = document.getElementById("weightsHint");
   const saveWarning = document.getElementById("saveWarning");
   const clearBtn = document.getElementById("clearBtn");
   const resultBanner = document.getElementById("resultBanner");
@@ -179,6 +219,12 @@
   const spinBtn = document.getElementById("spinBtn");
 
   let wheelNames = [];
+  let wheelWeights = [];     // one weight per slice (all 1 when weights are off)
+  let wheelLines = [];       // which text line each slice came from
+  let wheelStarts = [];      // start angle of each slice, in degrees
+  let wheelSpans = [];       // size of each slice, in degrees
+  let weights = [];          // saved weight for each text line (index = line number)
+  let useWeights = false;
   let wheelRotation = 0;
   let spinning = false;
   let spinTimer = null;
@@ -294,10 +340,22 @@
     wheelSvg.appendChild(line2);
   }
 
-  function renderWheel(names) {
+  // slice sizes follow the weights: a weight of 5 gets 5 times the angle of a weight of 1
+  function wheelGeometry(ws) {
+    const total = ws.reduce(function (a, b) { return a + b; }, 0);
+    const spans = ws.map(function (w) { return 360 * w / total; });
+    const starts = [];
+    let acc = 0;
+    spans.forEach(function (sp) { starts.push(acc); acc += sp; });
+    return { starts: starts, spans: spans };
+  }
+
+  function renderWheel(names, ws) {
     clearWheel();
     const n = names.length;
-    const segAngle = 360 / n;
+    const geo = wheelGeometry(ws);
+    const starts = geo.starts, spans = geo.spans;
+    const allEqual = ws.every(function (w) { return w === ws[0]; });
     const cx = 150, cy = 150, r = 146;
 
     const colors = names.map(function (_, i) { return WHEEL_PALETTE[i % WHEEL_PALETTE.length]; });
@@ -315,9 +373,9 @@
       wheelSvg.appendChild(svgEl("circle", { cx: cx, cy: cy, r: r, fill: colors[0], stroke: WHEEL_EDGE, "stroke-width": 2 }));
     }
     for (let i = 0; i < (n === 1 ? 0 : n); i++) {
-      const [x1, y1] = polarPoint(cx, cy, r, i * segAngle);
-      const [x2, y2] = polarPoint(cx, cy, r, (i + 1) * segAngle);
-      const largeArc = segAngle > 180 ? 1 : 0;
+      const [x1, y1] = polarPoint(cx, cy, r, starts[i]);
+      const [x2, y2] = polarPoint(cx, cy, r, starts[i] + spans[i]);
+      const largeArc = spans[i] > 180 ? 1 : 0;
       wheelSvg.appendChild(svgEl("path", {
         d: "M " + cx + " " + cy + " L " + x1 + " " + y1 + " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2 + " " + y2 + " Z",
         fill: colors[i],
@@ -326,10 +384,13 @@
       }));
     }
 
-    const layout = chooseLabelLayout(names, segAngle);
-    if (layout.mode !== "none") {
+    // equal slices share one text size; with weights each slice is sized to its own room
+    const sharedLayout = allEqual ? chooseLabelLayout(names, 360 / n) : null;
+    {
       for (let i = 0; i < n; i++) {
-        const midA = i * segAngle + segAngle / 2;
+        const layout = sharedLayout || chooseLabelLayout([names[i]], spans[i]);
+        if (layout.mode === "none") continue;
+        const midA = starts[i] + spans[i] / 2;
         const label = truncateName(names[i], layout.chars);
         let attrs;
 
@@ -414,24 +475,29 @@
      Options: one per line, saved in this browser
      ========================================================= */
 
-  function parseOptions(text) {
-    return text.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+  function rawLines() { return optionsInput.value.split(/\r?\n/); }
+
+  function weightAt(i) {
+    const w = weights[i];
+    return typeof w === "number" && isFinite(w) && w > 0 ? w : 1;
   }
 
-  // take one option (by its position among the non-blank lines) out of the text box
-  function removeOption(position) {
-    const lines = optionsInput.value.split(/\r?\n/);
-    let seen = -1;
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].trim()) seen++;
-      if (seen === position) { lines.splice(i, 1); break; }
-    }
-    optionsInput.value = lines.join("\n");
+  function setLines(lines) { optionsInput.value = lines.join("\n"); }
+
+  // take one option (by its line number) out of the list, together with its weight
+  function removeOption(lineIndex) {
+    const lines = rawLines();
+    lines.splice(lineIndex, 1);
+    weights.splice(lineIndex, 1);
+    setLines(lines);
+    if (useWeights) renderRows();
   }
 
   function save() {
     try {
       localStorage.setItem(STORAGE_KEY, optionsInput.value);
+      localStorage.setItem(WEIGHTS_KEY, JSON.stringify(rawLines().map(function (_, i) { return weightAt(i); })));
+      localStorage.setItem(USE_WEIGHTS_KEY, useWeights ? "1" : "0");
       saveWarning.style.display = "none";
     } catch (err) {
       saveWarning.style.display = "block";
@@ -439,33 +505,133 @@
   }
 
   function refreshWheel() {
-    wheelNames = parseOptions(optionsInput.value);
-    if (wheelNames.length >= 1) renderWheel(wheelNames);
-    else renderWheelPlaceholder();
+    wheelNames = []; wheelWeights = []; wheelLines = [];
+    rawLines().forEach(function (line, i) {
+      const t = line.trim();
+      if (!t) return;
+      wheelNames.push(t);
+      wheelLines.push(i);
+      wheelWeights.push(useWeights ? weightAt(i) : 1);
+    });
+    if (wheelNames.length >= 1) {
+      const geo = wheelGeometry(wheelWeights);
+      wheelStarts = geo.starts; wheelSpans = geo.spans;
+      renderWheel(wheelNames, wheelWeights);
+    } else {
+      renderWheelPlaceholder();
+    }
     spinBtn.disabled = wheelNames.length < 1 || spinning;
     if (wheelNames.length < 1) { stopIdle(); wheelRotation = 0; wheelWrap.style.transform = "rotate(0deg)"; }
     else startIdle();
   }
 
-  let saveTimer = null;
-  optionsInput.addEventListener("input", function () {
+  /* ---- weights editor: one row per option, shown instead of the text box ---- */
+
+  function renderRows() {
+    rowsEl.textContent = "";
+    rawLines().forEach(function (line, i) {
+      const name = document.createElement("input");
+      name.type = "text"; name.value = line; name.placeholder = "Option"; name.spellcheck = false;
+      name.setAttribute("aria-label", "Option " + (i + 1));
+      const weight = document.createElement("input");
+      weight.type = "number"; weight.min = "0"; weight.step = "any"; weight.value = weightAt(i);
+      weight.setAttribute("aria-label", "Weight for option " + (i + 1));
+      const del = document.createElement("button");
+      del.type = "button"; del.className = "del"; del.textContent = "×"; del.title = "Remove option";
+      del.setAttribute("aria-label", "Remove option " + (i + 1));
+      const row = document.createElement("div");
+      row.className = "row";
+      row.appendChild(name); row.appendChild(weight); row.appendChild(del);
+      rowsEl.appendChild(row);
+
+      name.addEventListener("input", function () { collectRows(); changed(); });
+      name.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        insertRow(i + 1);
+      });
+      weight.addEventListener("input", function () {
+        const v = parseFloat(weight.value);
+        weights[i] = v > 0 ? v : 1;
+        changed();
+      });
+      weight.addEventListener("blur", function () { weight.value = weightAt(i); });
+      del.addEventListener("click", function () {
+        const lines = rawLines();
+        lines.splice(i, 1); weights.splice(i, 1);
+        setLines(lines);
+        renderRows();
+        changed();
+      });
+    });
+    const add = document.createElement("button");
+    add.type = "button"; add.className = "add-row"; add.textContent = "+ Add option";
+    add.addEventListener("click", function () { insertRow(rawLines().length); });
+    rowsEl.appendChild(add);
+  }
+
+  // copy what's typed in the rows back into the text (the text is what gets saved)
+  function collectRows() {
+    const names = Array.prototype.map.call(rowsEl.querySelectorAll(".row input[type=text]"), function (el) { return el.value.replace(/[\r\n]+/g, " "); });
+    setLines(names);
+  }
+
+  function insertRow(at) {
+    const lines = rawLines();
+    if (lines.length === 1 && lines[0] === "" && at === 1) { /* empty box: reuse its one blank line */ }
+    lines.splice(at, 0, "");
+    weights.splice(at, 0, 1);
+    setLines(lines);
+    renderRows();
+    const inputs = rowsEl.querySelectorAll(".row input[type=text]");
+    if (inputs[at]) inputs[at].focus();
+    changed();
+  }
+
+  function setUseWeights(on) {
+    useWeights = on;
+    useWeightsToggle.checked = on;
+    optionsInput.hidden = on;
+    rowsEl.hidden = !on;
+    weightsHint.hidden = !on;
+    if (on) renderRows();
+    resultBanner.classList.remove("show");
+    refreshWheel();
+  }
+
+  // everything that edits the list ends up here
+  function changed() {
     resultBanner.classList.remove("show");
     snapWheelToStart();
     refreshWheel();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(save, 250);
-  });
+  }
+
+  // the wheel can't change mid-spin
+  function setEditable(on) {
+    optionsInput.disabled = !on;
+    clearBtn.disabled = !on;
+    useWeightsToggle.disabled = !on;
+    rowsEl.querySelectorAll("input, button").forEach(function (el) { el.disabled = !on; });
+  }
+
+  let saveTimer = null;
+  optionsInput.addEventListener("input", changed);
+  useWeightsToggle.addEventListener("change", function () { setUseWeights(useWeightsToggle.checked); save(); });
   window.addEventListener("pagehide", function () { clearTimeout(saveTimer); save(); });
 
   clearBtn.addEventListener("click", function () {
     if (!optionsInput.value.trim()) return;
     if (!window.confirm("Remove all options from the wheel?")) return;
     optionsInput.value = "";
+    weights = [];
+    if (useWeights) renderRows();
     resultBanner.classList.remove("show");
     snapWheelToStart();
     refreshWheel();
     save();
-    optionsInput.focus();
+    if (!useWeights) optionsInput.focus();
   });
 
   /* =========================================================
@@ -478,14 +644,18 @@
     stopIdle();           // the spin carries on smoothly from wherever the idle drift has reached
     spinning = true;
     spinBtn.disabled = true;
-    optionsInput.disabled = true;     // the wheel can't change mid-spin
-    clearBtn.disabled = true;
+    setEditable(false);
     resultBanner.classList.remove("show");
 
-    const n = wheelNames.length;
-    const segAngle = 360 / n;
-    const winnerIndex = Math.floor(Math.random() * n);
-    const centerAngle = winnerIndex * segAngle + segAngle / 2;
+    // weighted draw: each slice is picked in proportion to its weight
+    const total = wheelWeights.reduce(function (a, b) { return a + b; }, 0);
+    let pick = Math.random() * total;
+    let winnerIndex = wheelWeights.length - 1;
+    for (let i = 0; i < wheelWeights.length; i++) {
+      pick -= wheelWeights[i];
+      if (pick < 0) { winnerIndex = i; break; }
+    }
+    const centerAngle = wheelStarts[winnerIndex] + wheelSpans[winnerIndex] / 2;
     const targetOffset = ((-centerAngle % 360) + 360) % 360;
 
     const baseline = Math.ceil((wheelRotation + 1) / 360) * 360;
@@ -503,8 +673,7 @@
       function finish() {
         spinning = false;
         spinTimer = null;
-        optionsInput.disabled = false;
-        clearBtn.disabled = false;
+        setEditable(true);
         idleHold = true;      // let the result sit under the pointer for a moment, then drift again
         refreshWheel();       // also sets the Spin button's state
         setTimeout(function () { idleHold = false; startIdle(); }, IDLE_HOLD_MS);
@@ -513,7 +682,7 @@
       if (removeWinnerToggle.checked) {
         // let the wheel sit on the winner for a moment, then take it off the list
         spinTimer = setTimeout(function () {
-          removeOption(winnerIndex);
+          removeOption(wheelLines[winnerIndex]);
           snapWheelToStart();
           save();
           finish();
@@ -536,8 +705,11 @@
   try {
     optionsInput.value = localStorage.getItem(STORAGE_KEY) || "";
     removeWinnerToggle.checked = localStorage.getItem(REMOVE_KEY) === "1";
+    const savedWeights = JSON.parse(localStorage.getItem(WEIGHTS_KEY) || "[]");
+    if (Array.isArray(savedWeights)) weights = savedWeights;
+    useWeights = localStorage.getItem(USE_WEIGHTS_KEY) === "1";
   } catch (err) {}
-  refreshWheel();
+  setUseWeights(useWeights);
 })();
 </script>
 </body>
