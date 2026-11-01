@@ -287,11 +287,16 @@
   const SiteAudio = (function () {
     let enabled = false;
     try { enabled = localStorage.getItem(AUDIO_KEY) === "1"; } catch (err) {}
-    const VOLUME = 0.4;                       // 40% of the files' full volume
+    const VOLUME_KEY = "snejpenAudioVolume";
+    let volume = 0.4;                         // 0..1, set by the slider (starts at 40%)
+    try {
+      const saved = parseFloat(localStorage.getItem(VOLUME_KEY));
+      if (saved >= 0 && saved <= 1) volume = saved;
+    } catch (err) {}
     let spinSound = null, winSound = null, fadeTimer = null;
 
     function active() { return enabled && document.body.classList.contains("buttsoap"); }
-    function load(path) { const a = new Audio(path); a.preload = "auto"; a.volume = VOLUME; return a; }
+    function load(path) { const a = new Audio(path); a.preload = "auto"; a.volume = volume; return a; }
 
     function stopSpin() {
       if (!spinSound) return;
@@ -300,7 +305,7 @@
       let v = snd.volume;
       fadeTimer = setInterval(function () {      // quick fade so the sound doesn't cut off with a click
         v -= 0.14;
-        if (v <= 0) { clearInterval(fadeTimer); snd.pause(); snd.currentTime = 0; snd.volume = VOLUME; }
+        if (v <= 0) { clearInterval(fadeTimer); snd.pause(); snd.currentTime = 0; snd.volume = volume; }
         else snd.volume = v;
       }, 25);
     }
@@ -316,14 +321,27 @@
           if (!enabled) { if (spinSound) { spinSound.pause(); spinSound.currentTime = 0; } }
           else { spinSound = spinSound || load("Sounds/HamburgerSpin.mp3"); winSound = winSound || load("Sounds/HamburgerWin.mp3"); }
         });
+        const slider = el("input", { type: "range", class: "audio-volume", min: "0", max: "100", step: "1", "aria-label": "Audio volume" });
+        slider.value = Math.round(volume * 100);
+        slider.title = "Volume " + slider.value + "%";
+        slider.hidden = !enabled;                 // only shown while audio is on
+        slider.addEventListener("input", function () {
+          volume = slider.value / 100;
+          slider.title = "Volume " + slider.value + "%";
+          try { localStorage.setItem(VOLUME_KEY, String(volume)); } catch (err) {}
+          if (spinSound) spinSound.volume = volume;   // changes what's playing right now, too
+          if (winSound) winSound.volume = volume;
+        });
+        box.addEventListener("change", function () { slider.hidden = !box.checked; });
         container.className = "audio-toggle";
         container.appendChild(el("label", {}, [box, el("span", { text: "Use audio" })]));
+        container.appendChild(slider);
       },
       spin: function () {
         if (!active()) return;
         clearInterval(fadeTimer);
         spinSound = spinSound || load("Sounds/HamburgerSpin.mp3");
-        spinSound.volume = VOLUME;
+        spinSound.volume = volume;
         spinSound.currentTime = 0;
         const p = spinSound.play(); if (p && p.catch) p.catch(function () {});
       },
@@ -331,7 +349,7 @@
         if (!active()) return;
         stopSpin();
         winSound = winSound || load("Sounds/HamburgerWin.mp3");
-        winSound.volume = VOLUME;
+        winSound.volume = volume;
         winSound.currentTime = 0;
         const p = winSound.play(); if (p && p.catch) p.catch(function () {});
       }
