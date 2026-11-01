@@ -151,94 +151,75 @@
   .small-action { padding: 6px 12px; border-radius: 7px; font-size: 12.5px; background: var(--bg-raised); border: 1px solid var(--line-strong); color: var(--text); }
   .small-action:hover { background: var(--bg-raised-hover); }
 
-  /* ---------- second wheel ---------- */
-  .page.wide { max-width: 1500px; }
-  /* with two wheels they sit side by side on top, nearly as big as a lone wheel; the editors go underneath */
-  .two { grid-template-columns: 1fr; }
-  .two .wheels-panel { order: -1; }
-  .two .text-panel h1, .two .text-panel .hint { display: none; }
-  .editors { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-  .two .editors { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: none; }
-  .two .editor + .editor { margin-top: 0; }
-  .two textarea, .two .rows { flex: none; height: 170px; min-height: 0; }
-  @media (max-width: 800px) { .two .editors { grid-template-columns: 1fr; } }
-  .editor { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-  .editor-title { display: none; margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
-  .two .editor-title { display: block; }
-  .editor[hidden] { display: none; }
-  .wheels { display: flex; gap: 24px; align-items: flex-start; margin-bottom: 4px; }
-  .wheel-unit .wheel-controls { margin-top: 0; }
-  .wheel-unit { flex: 1 1 0; min-width: 0; }
-  .wheel-unit[hidden] { display: none; }
-  .wheel-unit .result-name { font-size: 22px; }
+  /* ---------- wheel picker ---------- */
+  .wheel-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
+  .wheel-picker select, .wheel-picker input[type="text"] {
+    flex: 1 1 90px;
+    min-width: 0;
+    background: var(--bg-raised);
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .wheel-picker input[type="text"] { background: var(--bg-input); font-family: var(--mono); font-weight: 500; }
+  .wheel-picker select:focus-visible, .wheel-picker input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .wheel-picker [hidden] { display: none; }
+  .wheel-picker .small-action:disabled, .wheel-picker select:disabled { opacity: 0.5; cursor: not-allowed; }
+  .wheel-picker .small-action { flex: none; padding: 6px 9px; }
 </style>
 </head>
 <body>
 
 <header id="site-nav"></header>
 
-<main class="page" id="page">
+<main class="page">
   <div class="layout">
 
     <section class="panel text-panel">
       <h1>Wheel spin</h1>
+
+      <div class="wheel-picker">
+        <select id="wheelSelect" aria-label="Choose a wheel"></select>
+        <input type="text" id="renameInput" maxlength="24" aria-label="Wheel name" hidden>
+        <button class="small-action" id="renameBtn" type="button">Rename</button>
+        <button class="small-action" id="newBtn" type="button">+ New</button>
+        <button class="small-action" id="deleteBtn" type="button">Delete</button>
+      </div>
+
       <p class="hint">Type your options, one per line. They appear on the wheel as you type and are saved on this device, so they're still here next time.</p>
 
-      <div class="editors">
-      <div class="editor" data-wheel="0">
-        <div class="editor-title">Wheel 1</div>
-        <textarea spellcheck="false" aria-label="Wheel 1 options" placeholder="Pizza&#10;Sushi&#10;Tacos&#10;Burgers"></textarea>
-        <div class="rows" hidden></div>
-      </div>
-      <div class="editor" data-wheel="1" hidden>
-        <div class="editor-title">Wheel 2</div>
-        <textarea spellcheck="false" aria-label="Wheel 2 options" placeholder="Movie&#10;Walk&#10;Game night"></textarea>
-        <div class="rows" hidden></div>
-      </div>
-      </div>
+      <textarea id="optionsInput" spellcheck="false" aria-label="Wheel options" placeholder="Pizza&#10;Sushi&#10;Tacos&#10;Burgers"></textarea>
+      <div class="rows" id="rows" hidden></div>
 
       <div class="list-foot">
         <div class="toggles">
           <label class="remove-toggle"><input type="checkbox" id="useWeightsToggle"><span>Use weights</span></label>
           <label class="remove-toggle"><input type="checkbox" id="removeWinnerToggle"><span>Remove winner from the list</span></label>
-          <label class="remove-toggle"><input type="checkbox" id="secondWheelToggle"><span>Use 2nd wheel</span></label>
           <div id="audioSlot"></div>
         </div>
         <button class="small-action" id="clearBtn" type="button">Clear all</button>
       </div>
-      <p class="save-warning" id="saveWarning">Couldn't save in this browser, so the list won't be kept.</p>
+      <p class="save-warning" id="saveWarning">Couldn't save in this browser, so your wheels won't be kept.</p>
     </section>
 
-    <section class="panel wheels-panel">
-      <div class="wheels" id="wheels">
-        <div class="wheel-unit" data-wheel="0">
-          <div class="result-banner" aria-live="polite">
-            <div class="result-label">SELECTED</div>
-            <div class="result-name">—</div>
-          </div>
-          <div class="wheel-area">
-            <div class="wheel-pointer"></div>
-            <div class="wheel-wrap"><svg viewBox="0 0 300 300" width="100%" height="100%"></svg></div>
-          </div>
-          <div class="wheel-controls">
-            <button class="primary-action spin-btn" type="button" disabled>Spin the wheel</button>
-          </div>
-        </div>
-        <div class="wheel-unit" data-wheel="1" hidden>
-          <div class="result-banner" aria-live="polite">
-            <div class="result-label">SELECTED</div>
-            <div class="result-name">—</div>
-          </div>
-          <div class="wheel-area">
-            <div class="wheel-pointer"></div>
-            <div class="wheel-wrap"><svg viewBox="0 0 300 300" width="100%" height="100%"></svg></div>
-          </div>
-          <div class="wheel-controls">
-            <button class="primary-action spin-btn" type="button" disabled>Spin the wheel</button>
-          </div>
-        </div>
+    <section class="panel">
+      <div class="result-banner" id="resultBanner" aria-live="polite">
+        <div class="result-label">SELECTED</div>
+        <div class="result-name" id="resultName">—</div>
       </div>
 
+      <div class="wheel-area">
+        <div class="wheel-pointer"></div>
+        <div class="wheel-wrap" id="wheelWrap"><svg id="wheelSvg" viewBox="0 0 300 300" width="100%" height="100%"></svg></div>
+      </div>
+
+      <div class="wheel-controls">
+        <button class="primary-action" id="spinBtn" type="button" disabled>Spin the wheel</button>
+      </div>
     </section>
 
   </div>
@@ -251,22 +232,31 @@
 
   if (window.SiteAudio) SiteAudio.mount(document.getElementById("audioSlot"));
 
+  const STORE_KEY = "snejpenWheelSpinData";           // all wheels live in this one entry
   const REMOVE_KEY = "snejpenWheelSpinRemoveWinner";
   const USE_WEIGHTS_KEY = "snejpenWheelSpinUseWeights";
-  const SECOND_KEY = "snejpenWheelSpinSecondWheel";
+  const MAX_WHEELS = 5;
+  const MAX_NAME = 24;
   const DEFAULT_WEIGHT = 10;          // what a new option starts with when weights are on
+  const IDLE_DEG_PER_SECOND = 7;      // about one turn a minute
+  const IDLE_HOLD_MS = 2500;          // after a result the wheel rests this long before drifting again
 
-  const page = document.getElementById("page");
+  const optionsInput = document.getElementById("optionsInput");
+  const rowsEl = document.getElementById("rows");
   const removeWinnerToggle = document.getElementById("removeWinnerToggle");
   const useWeightsToggle = document.getElementById("useWeightsToggle");
-  const secondWheelToggle = document.getElementById("secondWheelToggle");
   const saveWarning = document.getElementById("saveWarning");
   const clearBtn = document.getElementById("clearBtn");
-
-  let useWeights = false;
-  let secondOn = false;
-  let spinningCount = 0;   // how many wheels are turning right now
-  let wheels = [];
+  const spinBtn = document.getElementById("spinBtn");
+  const resultBanner = document.getElementById("resultBanner");
+  const resultName = document.getElementById("resultName");
+  const wheelWrap = document.getElementById("wheelWrap");
+  const wheelSvg = document.getElementById("wheelSvg");
+  const wheelSelect = document.getElementById("wheelSelect");
+  const renameInput = document.getElementById("renameInput");
+  const renameBtn = document.getElementById("renameBtn");
+  const newBtn = document.getElementById("newBtn");
+  const deleteBtn = document.getElementById("deleteBtn");
 
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -349,14 +339,16 @@
     const L = Math.min(longest, 34);
     let font = Math.min(14, R_TEXT_END / (CHAR_W * L + thickness), (R_TEXT_END - R_TEXT_MIN) / (CHAR_W * L));
     let chars = L;
+    let shrunk = false;
     if (font < MIN_RADIAL_FONT) {
+      shrunk = true;
       font = MIN_RADIAL_FONT;
       chars = Math.floor(Math.min(
         (R_TEXT_END - thickness * font) / (CHAR_W * font),
         (R_TEXT_END - R_TEXT_MIN) / (CHAR_W * font)
       ));
     }
-    if (chars < 3) return { mode: "none" }; // too many slices for readable text; the winner banner still names the pick
+    if (shrunk && chars < 3) return { mode: "none" }; // too many slices for readable text; the winner banner still names the pick
     return { mode: "along", fontSize: font, chars: chars };
   }
 
@@ -468,319 +460,343 @@
   }
 
 
+
   /* =========================================================
-     One wheel with its own list, weights and idle drift
+     Saved wheels: up to five, each with a name, its options and their weights
      ========================================================= */
 
-  const IDLE_DEG_PER_SECOND = 7;      // about one turn a minute
-  const IDLE_HOLD_MS = 2500;          // after a result the wheels rest this long before drifting again
+  let store = null;                  // { wheels: [{ id, name, text, weights }], current: id }
+  let renaming = false;
+
+  function newId() { return "w" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function currentWheel() {
+    return store.wheels.filter(function (w) { return w.id === store.current; })[0] || store.wheels[0];
+  }
+
+  function readJSON(key) {
+    try { return JSON.parse(localStorage.getItem(key)); } catch (err) { return null; }
+  }
+  function readText(key) {
+    try { return localStorage.getItem(key) || ""; } catch (err) { return ""; }
+  }
+
+  // Bring over what earlier versions of this page saved: the first wheel, and the second wheel if it was in use.
+  function migrateOldSettings() {
+    function numbers(json) {
+      let arr = null;
+      try { arr = JSON.parse(json); } catch (err) {}
+      return Array.isArray(arr) ? arr.filter(function (n) { return typeof n === "number"; }) : null;
+    }
+    // weights saved by the very first version all started at 1; if they were all the same (never customised),
+    // drop them so new options use today's default instead of mixing 1s and 10s
+    function oldWeights(json) {
+      const arr = numbers(json);
+      if (!arr || arr.every(function (n) { return n === arr[0]; })) return [];
+      return arr;
+    }
+    const wheels = [];
+    wheels.push({
+      id: newId(), name: "Wheel 1",
+      text: readText("snejpenWheelSpinOptions"),
+      weights: numbers(readText("snejpenWheelSpinWeightsV2")) || oldWeights(readText("snejpenWheelSpinWeights")) || []
+    });
+    const text2 = readText("snejpenWheelSpinOptions_2");
+    if (readText("snejpenWheelSpinSecondWheel") === "1" || text2.trim()) {
+      wheels.push({
+        id: newId(), name: "Wheel 2",
+        text: text2,
+        weights: numbers(readText("snejpenWheelSpinWeightsV2_2")) || []
+      });
+    }
+    return { wheels: wheels, current: wheels[0].id };
+  }
+
+  function loadStore() {
+    const saved = readJSON(STORE_KEY);
+    if (saved && Array.isArray(saved.wheels) && saved.wheels.length) {
+      saved.wheels = saved.wheels.slice(0, MAX_WHEELS).map(function (w, i) {
+        return {
+          id: String(w.id || newId()),
+          name: String(w.name || "Wheel " + (i + 1)).slice(0, MAX_NAME),
+          text: typeof w.text === "string" ? w.text : "",
+          weights: Array.isArray(w.weights) ? w.weights : []
+        };
+      });
+      return { wheels: saved.wheels, current: saved.current };
+    }
+    return migrateOldSettings();   // first visit with the new format
+  }
+
+  function saveStore() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(store));
+      saveWarning.style.display = "none";
+    } catch (err) {
+      saveWarning.style.display = "block";
+    }
+  }
+
+  /* =========================================================
+     The wheel on screen
+     ========================================================= */
+
+  let weights = [];                  // weight for each text line of the shown wheel (index = line number)
+  let names = [], ws = [], lines = [], starts = [], spans = [];
+  let rotation = 0;
+  let idleFrame = null, idleLast = 0, idleHold = false;
+  let spinning = false;
+  let winner = -1;
+  let useWeights = false;
   let saveTimer = null;
 
-  function createWheel(i) {
-    const suffix = i === 0 ? "" : "_2";
-    const STORAGE_KEY = "snejpenWheelSpinOptions" + suffix;        // wheel 1 keeps the key it always had
-    const WEIGHTS_KEY = "snejpenWheelSpinWeightsV2" + suffix;      // V2: weights now start at 10
-
-    const editor = document.querySelector('.editor[data-wheel="' + i + '"]');
-    const unit = document.querySelector('.wheel-unit[data-wheel="' + i + '"]');
-    const optionsInput = editor.querySelector("textarea");
-    const rowsEl = editor.querySelector(".rows");
-    const banner = unit.querySelector(".result-banner");
-    const resultName = unit.querySelector(".result-name");
-    const wheelWrap = unit.querySelector(".wheel-wrap");
-    const wheelSvg = unit.querySelector("svg");
-    const spinBtn = unit.querySelector(".spin-btn");
-    let spinning = false;
-    let idleHold = false;
-
-    let weights = [];                // saved weight for each text line (index = line number)
-    let names = [], ws = [], lines = [], starts = [], spans = [];
-    let rotation = 0;
-    let idleFrame = null, idleLast = 0;
-    let spinTimer = null;
-    let winner = -1;
-
-    function rawLines() { return optionsInput.value.split(/\r?\n/); }
-    function setLines(l) { optionsInput.value = l.join("\n"); }
-    function weightAt(n) {
-      const w = weights[n];
-      return typeof w === "number" && isFinite(w) && w > 0 ? w : DEFAULT_WEIGHT;
-    }
-
-    /* ---- idle drift ---- */
-    function idleTick(now) {
-      if (!idleLast) idleLast = now;
-      rotation += IDLE_DEG_PER_SECOND * (now - idleLast) / 1000;
-      idleLast = now;
-      wheelWrap.style.transition = "none";
-      wheelWrap.style.transform = "rotate(" + rotation + "deg)";
-      idleFrame = requestAnimationFrame(idleTick);
-    }
-    function startIdle() {
-      if (reduceMotion || idleFrame !== null || spinning || idleHold || names.length < 1) return;
-      idleLast = 0;
-      idleFrame = requestAnimationFrame(idleTick);
-    }
-    function stopIdle() {
-      if (idleFrame !== null) cancelAnimationFrame(idleFrame);
-      idleFrame = null;
-      wheelWrap.style.transition = "";
-      void wheelWrap.offsetWidth;
-    }
-    function normalize() {   // keep the angle tidy without any visible movement
-      rotation = ((rotation % 360) + 360) % 360;
-      wheelWrap.style.transition = "none";
-      wheelWrap.style.transform = "rotate(" + rotation + "deg)";
-      void wheelWrap.offsetWidth;
-      wheelWrap.style.transition = "";
-    }
-
-    /* ---- drawing ---- */
-    function refresh() {
-      names = []; ws = []; lines = [];
-      rawLines().forEach(function (line, n) {
-        const t = line.trim();
-        if (!t) return;
-        names.push(t); lines.push(n); ws.push(useWeights ? weightAt(n) : 1);
-      });
-      if (names.length >= 1) {
-        const geo = wheelGeometry(ws);
-        starts = geo.starts; spans = geo.spans;
-        renderWheel(wheelSvg, names, ws);
-      } else {
-        renderWheelPlaceholder(wheelSvg);
-      }
-      if (names.length < 1) { stopIdle(); rotation = 0; wheelWrap.style.transform = "rotate(0deg)"; }
-      else startIdle();
-      updateSpinButton();
-    }
-
-    function updateSpinButton() { spinBtn.disabled = spinning || names.length < 1; }
-
-    /* ---- saving ---- */
-    function save() {
-      try {
-        localStorage.setItem(STORAGE_KEY, optionsInput.value);
-        localStorage.setItem(WEIGHTS_KEY, JSON.stringify(rawLines().map(function (_, n) { return weightAt(n); })));
-        saveWarning.style.display = "none";
-      } catch (err) {
-        saveWarning.style.display = "block";
-      }
-    }
-
-    function changed() {
-      banner.classList.remove("show");
-      normalize();
-      refresh();
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(saveAll, 250);
-    }
-
-    /* ---- weights editor ---- */
-    function renderRows() {
-      rowsEl.textContent = "";
-      rawLines().forEach(function (line, n) {
-        const name = document.createElement("input");
-        name.type = "text"; name.value = line; name.placeholder = "Option"; name.spellcheck = false;
-        name.setAttribute("aria-label", "Option " + (n + 1));
-        const weight = document.createElement("input");
-        weight.type = "number"; weight.min = "0"; weight.step = "any"; weight.value = weightAt(n);
-        weight.setAttribute("aria-label", "Weight for option " + (n + 1));
-        const del = document.createElement("button");
-        del.type = "button"; del.className = "del"; del.textContent = "×"; del.title = "Remove option";
-        del.setAttribute("aria-label", "Remove option " + (n + 1));
-        const row = document.createElement("div");
-        row.className = "row";
-        row.appendChild(name); row.appendChild(weight); row.appendChild(del);
-        rowsEl.appendChild(row);
-
-        name.addEventListener("input", function () { collectRows(); changed(); });
-        name.addEventListener("keydown", function (e) {
-          if (e.key !== "Enter") return;
-          e.preventDefault();
-          insertRow(n + 1);
-        });
-        weight.addEventListener("input", function () {
-          const v = parseFloat(weight.value);
-          weights[n] = v > 0 ? v : DEFAULT_WEIGHT;
-          changed();
-        });
-        weight.addEventListener("blur", function () { weight.value = weightAt(n); });
-        del.addEventListener("click", function () {
-          const l = rawLines();
-          l.splice(n, 1); weights.splice(n, 1);
-          setLines(l);
-          renderRows();
-          changed();
-        });
-      });
-      const add = document.createElement("button");
-      add.type = "button"; add.className = "add-row"; add.textContent = "+ Add option";
-      add.addEventListener("click", function () { insertRow(rawLines().length); });
-      rowsEl.appendChild(add);
-    }
-
-    function collectRows() {
-      setLines(Array.prototype.map.call(rowsEl.querySelectorAll(".row input[type=text]"), function (el) { return el.value.replace(/[\r\n]+/g, " "); }));
-    }
-
-    function insertRow(at) {
-      const l = rawLines();
-      l.splice(at, 0, "");
-      weights.splice(at, 0, DEFAULT_WEIGHT);
-      setLines(l);
-      renderRows();
-      const inputs = rowsEl.querySelectorAll(".row input[type=text]");
-      if (inputs[at]) inputs[at].focus();
-      changed();
-    }
-
-    function showMode() {
-      optionsInput.hidden = useWeights;
-      rowsEl.hidden = !useWeights;
-      if (useWeights) renderRows();
-      banner.classList.remove("show");
-      refresh();
-    }
-
-    optionsInput.addEventListener("input", changed);
-
-    function setEditable(on) {
-      optionsInput.disabled = !on;
-      rowsEl.querySelectorAll("input, button").forEach(function (el) { el.disabled = !on; });
-    }
-
-    function clearList() {
-      optionsInput.value = "";
-      weights = [];
-      if (useWeights) renderRows();
-      banner.classList.remove("show");
-      normalize();
-      refresh();
-    }
-
-    /* ---- spinning ---- */
-    function hasOptions() { return names.length >= 1; }
-
-    // starts this wheel turning toward a weighted random winner
-    function beginSpin() {
-      stopIdle();
-      banner.classList.remove("show");
-      const total = ws.reduce(function (a, b) { return a + b; }, 0);
-      let pick = Math.random() * total;
-      winner = ws.length - 1;
-      for (let n = 0; n < ws.length; n++) {
-        pick -= ws[n];
-        if (pick < 0) { winner = n; break; }
-      }
-      const centerAngle = starts[winner] + spans[winner] / 2;
-      const targetOffset = ((-centerAngle % 360) + 360) % 360;
-      const baseline = Math.ceil((rotation + 1) / 360) * 360;
-      let next = baseline + 5 * 360 + targetOffset;
-      while (next <= rotation) next += 360;
-      rotation = next;
-      wheelWrap.style.transform = "rotate(" + rotation + "deg)";
-    }
-
-    function showWinner() {
-      resultName.textContent = names[winner];
-      banner.classList.add("show");
-    }
-
-    function removeWinner() {
-      const l = rawLines();
-      l.splice(lines[winner], 1);
-      weights.splice(lines[winner], 1);
-      setLines(l);
-      if (useWeights) renderRows();
-      normalize();
-    }
-
-    function spin() {
-      if (spinning || names.length < 1) return;
-      spinning = true;
-      spinningCount++;
-      lockShared();
-      updateSpinButton();
-      setEditable(false);
-      beginSpin();
-      if (window.SiteAudio) SiteAudio.spin();
-
-      setTimeout(function () {
-        showWinner();
-        if (window.SiteAudio) SiteAudio.win();
-        spinBtn.textContent = "Spin again";
-
-        function finish() {
-          spinning = false;
-          spinningCount--;
-          lockShared();
-          setEditable(true);
-          idleHold = true;      // let the result sit under the pointer for a moment, then drift again
-          refresh();
-          setTimeout(function () { idleHold = false; startIdle(); }, IDLE_HOLD_MS);
-        }
-
-        if (removeWinnerToggle.checked) {
-          // let the wheel sit on the winner for a moment, then take it off the list
-          setTimeout(function () { removeWinner(); save(); finish(); }, 1500);
-        } else {
-          finish();
-        }
-      }, SPIN_DURATION_MS);
-    }
-    spinBtn.addEventListener("click", spin);
-
-    function load() {
-      try {
-        optionsInput.value = localStorage.getItem(STORAGE_KEY) || "";
-        const saved = JSON.parse(localStorage.getItem(WEIGHTS_KEY) || "[]");
-        if (Array.isArray(saved)) weights = saved;
-      } catch (err) {}
-    }
-
-    return {
-      refresh: refresh, updateSpinButton: updateSpinButton, save: save, showMode: showMode, load: load, setEditable: setEditable,
-      clearList: clearList, hasOptions: hasOptions, startIdle: startIdle, normalize: normalize, hideBanner: function () { banner.classList.remove("show"); },
-      isEmpty: function () { return !optionsInput.value.trim(); },
-      focus: function () { optionsInput.focus(); }
-    };
+  function rawLines() { return optionsInput.value.split(/\r?\n/); }
+  function setLines(l) { optionsInput.value = l.join("\n"); }
+  function weightAt(n) {
+    const w = weights[n];
+    return typeof w === "number" && isFinite(w) && w > 0 ? w : DEFAULT_WEIGHT;
   }
 
-  function activeWheels() { return secondOn ? wheels : [wheels[0]]; }
-  function saveAll() { wheels.forEach(function (w) { w.save(); }); }
-  // the shared settings can't change while any wheel is turning
-  function lockShared() {
-    const busy = spinningCount > 0;
-    clearBtn.disabled = busy;
-    useWeightsToggle.disabled = busy;
-    secondWheelToggle.disabled = busy;
+  /* ---- idle drift ---- */
+  function idleTick(now) {
+    if (!idleLast) idleLast = now;
+    rotation += IDLE_DEG_PER_SECOND * (now - idleLast) / 1000;
+    idleLast = now;
+    wheelWrap.style.transition = "none";
+    wheelWrap.style.transform = "rotate(" + rotation + "deg)";
+    idleFrame = requestAnimationFrame(idleTick);
+  }
+  function startIdle() {
+    if (reduceMotion || idleFrame !== null || spinning || idleHold || names.length < 1) return;
+    idleLast = 0;
+    idleFrame = requestAnimationFrame(idleTick);
+  }
+  function stopIdle() {
+    if (idleFrame !== null) cancelAnimationFrame(idleFrame);
+    idleFrame = null;
+    wheelWrap.style.transition = "";
+    void wheelWrap.offsetWidth;
+  }
+  function normalize() {   // keep the angle tidy without any visible movement
+    rotation = ((rotation % 360) + 360) % 360;
+    wheelWrap.style.transition = "none";
+    wheelWrap.style.transform = "rotate(" + rotation + "deg)";
+    void wheelWrap.offsetWidth;
+    wheelWrap.style.transition = "";
+  }
+
+  /* ---- drawing ---- */
+  function refresh() {
+    names = []; ws = []; lines = [];
+    rawLines().forEach(function (line, n) {
+      const t = line.trim();
+      if (!t) return;
+      names.push(t); lines.push(n); ws.push(useWeights ? weightAt(n) : 1);
+    });
+    if (names.length >= 1) {
+      const geo = wheelGeometry(ws);
+      starts = geo.starts; spans = geo.spans;
+      renderWheel(wheelSvg, names, ws);
+    } else {
+      renderWheelPlaceholder(wheelSvg);
+    }
+    if (names.length < 1) { stopIdle(); rotation = 0; wheelWrap.style.transform = "rotate(0deg)"; }
+    else startIdle();
+    spinBtn.disabled = spinning || names.length < 1;
+  }
+
+  /* ---- saving ---- */
+  function commitCurrent() {   // copy what's on screen into the saved wheel
+    const w = currentWheel();
+    w.text = optionsInput.value;
+    w.weights = rawLines().map(function (_, n) { return weightAt(n); });
+  }
+  function saveNow() { clearTimeout(saveTimer); commitCurrent(); saveStore(); }
+
+  function changed() {
+    resultBanner.classList.remove("show");
+    normalize();
+    refresh();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNow, 250);
+  }
+
+  /* ---- weights editor: one row per option, shown instead of the text box ---- */
+  function renderRows() {
+    rowsEl.textContent = "";
+    rawLines().forEach(function (line, n) {
+      const name = document.createElement("input");
+      name.type = "text"; name.value = line; name.placeholder = "Option"; name.spellcheck = false;
+      name.setAttribute("aria-label", "Option " + (n + 1));
+      const weight = document.createElement("input");
+      weight.type = "number"; weight.min = "0"; weight.step = "any"; weight.value = weightAt(n);
+      weight.setAttribute("aria-label", "Weight for option " + (n + 1));
+      const del = document.createElement("button");
+      del.type = "button"; del.className = "del"; del.textContent = "×"; del.title = "Remove option";
+      del.setAttribute("aria-label", "Remove option " + (n + 1));
+      const row = document.createElement("div");
+      row.className = "row";
+      row.appendChild(name); row.appendChild(weight); row.appendChild(del);
+      rowsEl.appendChild(row);
+
+      name.addEventListener("input", function () { collectRows(); changed(); });
+      name.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        insertRow(n + 1);
+      });
+      weight.addEventListener("input", function () {
+        const v = parseFloat(weight.value);
+        weights[n] = v > 0 ? v : DEFAULT_WEIGHT;
+        changed();
+      });
+      weight.addEventListener("blur", function () { weight.value = weightAt(n); });
+      del.addEventListener("click", function () {
+        const l = rawLines();
+        l.splice(n, 1); weights.splice(n, 1);
+        setLines(l);
+        renderRows();
+        changed();
+      });
+    });
+    const add = document.createElement("button");
+    add.type = "button"; add.className = "add-row"; add.textContent = "+ Add option";
+    add.addEventListener("click", function () { insertRow(rawLines().length); });
+    rowsEl.appendChild(add);
+  }
+
+  function collectRows() {
+    setLines(Array.prototype.map.call(rowsEl.querySelectorAll(".row input[type=text]"), function (el) { return el.value.replace(/[\r\n]+/g, " "); }));
+  }
+
+  function insertRow(at) {
+    const l = rawLines();
+    l.splice(at, 0, "");
+    weights.splice(at, 0, DEFAULT_WEIGHT);
+    setLines(l);
+    renderRows();
+    const inputs = rowsEl.querySelectorAll(".row input[type=text]");
+    if (inputs[at]) inputs[at].focus();
+    changed();
+  }
+
+  function showMode() {
+    optionsInput.hidden = useWeights;
+    rowsEl.hidden = !useWeights;
+    if (useWeights) renderRows();
+    resultBanner.classList.remove("show");
+    refresh();
+  }
+
+  optionsInput.addEventListener("input", changed);
+
+  /* ---- putting a saved wheel on screen ---- */
+  function showWheel() {
+    const w = currentWheel();
+    optionsInput.value = w.text;
+    weights = w.weights.slice();
+    spinBtn.textContent = "Spin the wheel";
+    resultBanner.classList.remove("show");
+    idleHold = false;
+    stopIdle();
+    rotation = 0;
+    wheelWrap.style.transition = "none";
+    wheelWrap.style.transform = "rotate(0deg)";
+    void wheelWrap.offsetWidth;
+    wheelWrap.style.transition = "";
+    showMode();
   }
 
   /* =========================================================
-     Controls shared by both wheels
+     Wheel picker: choose, create, rename, delete
      ========================================================= */
 
-  function setSecond(on) {
-    secondOn = on;
-    secondWheelToggle.checked = on;
-    document.querySelector('.editor[data-wheel="1"]').hidden = !on;
-    document.querySelector('.wheel-unit[data-wheel="1"]').hidden = !on;
-    document.querySelector(".layout").classList.toggle("two", on);
-    page.classList.toggle("wide", on);
-    wheels[0].refresh();            // the first wheel changes size when it shares the row
-    if (on) wheels[1].refresh();
+  function renderPicker() {
+    wheelSelect.textContent = "";
+    store.wheels.forEach(function (w) {
+      const opt = document.createElement("option");
+      opt.value = w.id; opt.textContent = w.name;
+      wheelSelect.appendChild(opt);
+    });
+    wheelSelect.value = currentWheel().id;
+    newBtn.disabled = spinning || store.wheels.length >= MAX_WHEELS;
+    newBtn.title = store.wheels.length >= MAX_WHEELS ? "You can have up to " + MAX_WHEELS + " wheels" : "";
+    deleteBtn.disabled = spinning || store.wheels.length <= 1;
+    renameBtn.disabled = spinning;
+    wheelSelect.disabled = spinning;
   }
 
-  secondWheelToggle.addEventListener("change", function () {
-    setSecond(secondWheelToggle.checked);
-    try { localStorage.setItem(SECOND_KEY, secondOn ? "1" : "0"); } catch (err) {}
+  function switchTo(id) {
+    if (id === store.current) return;
+    saveNow();
+    store.current = id;
+    saveStore();
+    showWheel();
+    renderPicker();
+  }
+  wheelSelect.addEventListener("change", function () { switchTo(wheelSelect.value); });
+
+  newBtn.addEventListener("click", function () {
+    if (spinning || store.wheels.length >= MAX_WHEELS) return;
+    saveNow();
+    let n = 1;
+    const taken = store.wheels.map(function (w) { return w.name; });
+    while (taken.indexOf("Wheel " + n) !== -1) n++;
+    const w = { id: newId(), name: "Wheel " + n, text: "", weights: [] };
+    store.wheels.push(w);
+    store.current = w.id;
+    saveStore();
+    showWheel();
+    renderPicker();
+    optionsInput.hidden ? rowsEl.querySelector(".add-row").focus() : optionsInput.focus();
   });
+
+  deleteBtn.addEventListener("click", function () {
+    if (spinning || store.wheels.length <= 1) return;
+    const w = currentWheel();
+    if (!window.confirm('Delete "' + w.name + '" and its options?')) return;
+    const at = store.wheels.indexOf(w);
+    store.wheels.splice(at, 1);
+    store.current = store.wheels[Math.max(0, at - 1)].id;
+    saveStore();
+    showWheel();
+    renderPicker();
+  });
+
+  function startRename() {
+    renaming = true;
+    renameInput.value = currentWheel().name;
+    wheelSelect.hidden = true;
+    renameInput.hidden = false;
+    renameBtn.textContent = "Save";
+    renameInput.focus();
+    renameInput.select();
+  }
+  function endRename(commit) {
+    if (!renaming) return;
+    renaming = false;
+    const name = renameInput.value.replace(/\s+/g, " ").trim().slice(0, MAX_NAME);
+    if (commit && name) { currentWheel().name = name; saveNow(); }
+    renameInput.hidden = true;
+    wheelSelect.hidden = false;
+    renameBtn.textContent = "Rename";
+    renderPicker();
+  }
+  renameBtn.addEventListener("mousedown", function (e) { if (renaming) e.preventDefault(); });   // keep the field focused so "Save" isn't pre-empted by blur
+  renameBtn.addEventListener("click", function () { if (renaming) endRename(true); else if (!spinning) startRename(); });
+  renameInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); endRename(true); wheelSelect.focus(); }
+    else if (e.key === "Escape") { e.preventDefault(); endRename(false); renameBtn.focus(); }
+  });
+  renameInput.addEventListener("blur", function () { endRename(true); });
+
+  /* =========================================================
+     Shared settings
+     ========================================================= */
 
   useWeightsToggle.addEventListener("change", function () {
     useWeights = useWeightsToggle.checked;
-    wheels.forEach(function (w) { w.showMode(); });
-    saveAll();
+    showMode();
+    saveNow();
     try { localStorage.setItem(USE_WEIGHTS_KEY, useWeights ? "1" : "0"); } catch (err) {}
   });
 
@@ -789,29 +805,107 @@
   });
 
   clearBtn.addEventListener("click", function () {
-    if (activeWheels().every(function (w) { return w.isEmpty(); })) return;
-    if (!window.confirm(secondOn ? "Remove all options from both wheels?" : "Remove all options from the wheel?")) return;
-    activeWheels().forEach(function (w) { w.clearList(); });
-    saveAll();
-    wheels[0].focus();
+    if (!optionsInput.value.trim()) return;
+    if (!window.confirm('Remove all options from "' + currentWheel().name + '"?')) return;
+    optionsInput.value = "";
+    weights = [];
+    if (useWeights) renderRows();
+    resultBanner.classList.remove("show");
+    normalize();
+    refresh();
+    saveNow();
+    if (!useWeights) optionsInput.focus();
   });
 
-  window.addEventListener("pagehide", function () { clearTimeout(saveTimer); saveAll(); });
+  window.addEventListener("pagehide", function () { if (renaming) endRename(true); saveNow(); });
+
+  // the wheel and the lists can't change mid-spin
+  function setBusy(on) {
+    optionsInput.disabled = on;
+    rowsEl.querySelectorAll("input, button").forEach(function (el) { el.disabled = on; });
+    clearBtn.disabled = on;
+    useWeightsToggle.disabled = on;
+    renderPicker();
+  }
 
   /* =========================================================
-     Start-up: bring back what was saved last time
+     Spinning
      ========================================================= */
 
-  wheels = [createWheel(0), createWheel(1)];
-  wheels.forEach(function (w) { w.load(); });
+  function spinWheel() {
+    if (spinning || names.length < 1) return;
+
+    stopIdle();           // the spin carries on smoothly from wherever the idle drift has reached
+    spinning = true;
+    spinBtn.disabled = true;
+    setBusy(true);
+    resultBanner.classList.remove("show");
+
+    // weighted draw: each slice is picked in proportion to its weight
+    const total = ws.reduce(function (a, b) { return a + b; }, 0);
+    let pick = Math.random() * total;
+    winner = ws.length - 1;
+    for (let n = 0; n < ws.length; n++) {
+      pick -= ws[n];
+      if (pick < 0) { winner = n; break; }
+    }
+    const centerAngle = starts[winner] + spans[winner] / 2;
+    const targetOffset = ((-centerAngle % 360) + 360) % 360;
+    const baseline = Math.ceil((rotation + 1) / 360) * 360;
+    let next = baseline + 5 * 360 + targetOffset;
+    while (next <= rotation) next += 360;
+    rotation = next;
+    wheelWrap.style.transform = "rotate(" + rotation + "deg)";
+    if (window.SiteAudio) SiteAudio.spin();
+
+    const won = winner;
+    setTimeout(function () {
+      resultName.textContent = names[won];
+      resultBanner.classList.add("show");
+      if (window.SiteAudio) SiteAudio.win();
+      spinBtn.textContent = "Spin again";
+
+      function finish() {
+        spinning = false;
+        setBusy(false);
+        idleHold = true;      // let the result sit under the pointer for a moment, then drift again
+        refresh();
+        setTimeout(function () { idleHold = false; startIdle(); }, IDLE_HOLD_MS);
+      }
+
+      if (removeWinnerToggle.checked) {
+        // let the wheel sit on the winner for a moment, then take it off the list
+        setTimeout(function () {
+          const l = rawLines();
+          l.splice(lines[won], 1);
+          weights.splice(lines[won], 1);
+          setLines(l);
+          if (useWeights) renderRows();
+          normalize();
+          saveNow();
+          finish();
+        }, 1500);
+      } else {
+        finish();
+      }
+    }, SPIN_DURATION_MS);
+  }
+  spinBtn.addEventListener("click", spinWheel);
+
+  /* =========================================================
+     Start-up
+     ========================================================= */
+
+  store = loadStore();
+  if (!store.wheels.some(function (w) { return w.id === store.current; })) store.current = store.wheels[0].id;
   try {
     removeWinnerToggle.checked = localStorage.getItem(REMOVE_KEY) === "1";
     useWeights = localStorage.getItem(USE_WEIGHTS_KEY) === "1";
-    secondOn = localStorage.getItem(SECOND_KEY) === "1";
   } catch (err) {}
   useWeightsToggle.checked = useWeights;
-  wheels.forEach(function (w) { w.showMode(); });
-  setSecond(secondOn);
+  saveStore();             // writes the migrated data in the new format
+  showWheel();
+  renderPicker();
 })();
 </script>
 </body>
