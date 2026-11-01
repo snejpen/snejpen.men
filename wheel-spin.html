@@ -149,25 +149,48 @@
 
   .small-action { padding: 6px 12px; border-radius: 7px; font-size: 12.5px; background: var(--bg-raised); border: 1px solid var(--line-strong); color: var(--text); }
   .small-action:hover { background: var(--bg-raised-hover); }
+
+  /* ---------- second wheel ---------- */
+  .page.wide { max-width: 1400px; }
+  .editor { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .editor-title { display: none; margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+  .two .editor-title { display: block; }
+  .editor[hidden] { display: none; }
+  .two .editor + .editor { margin-top: 12px; }
+  .two textarea, .two .rows { min-height: 130px; }
+  .wheels { display: flex; gap: 24px; align-items: flex-start; }
+  .wheel-unit { flex: 1 1 0; min-width: 0; }
+  .wheel-unit[hidden] { display: none; }
+  .wheel-unit .result-name { font-size: 22px; }
 </style>
 </head>
 <body>
 
 <header id="site-nav"></header>
 
-<main class="page">
+<main class="page" id="page">
   <div class="layout">
 
     <section class="panel text-panel">
       <h1>Wheel spin</h1>
       <p class="hint">Type your options, one per line. They appear on the wheel as you type and are saved on this device, so they're still here next time.</p>
-      <label for="optionsInput" class="sr-only" style="position:absolute;left:-9999px">Wheel options</label>
-      <textarea id="optionsInput" spellcheck="false" placeholder="Pizza&#10;Sushi&#10;Tacos&#10;Burgers"></textarea>
-      <div class="rows" id="rows" hidden></div>
+
+      <div class="editor" data-wheel="0">
+        <div class="editor-title">Wheel 1</div>
+        <textarea spellcheck="false" aria-label="Wheel 1 options" placeholder="Pizza&#10;Sushi&#10;Tacos&#10;Burgers"></textarea>
+        <div class="rows" hidden></div>
+      </div>
+      <div class="editor" data-wheel="1" hidden>
+        <div class="editor-title">Wheel 2</div>
+        <textarea spellcheck="false" aria-label="Wheel 2 options" placeholder="Movie&#10;Walk&#10;Game night"></textarea>
+        <div class="rows" hidden></div>
+      </div>
+
       <div class="list-foot">
         <div class="toggles">
           <label class="remove-toggle"><input type="checkbox" id="useWeightsToggle"><span>Use weights</span></label>
           <label class="remove-toggle"><input type="checkbox" id="removeWinnerToggle"><span>Remove winner from the list</span></label>
+          <label class="remove-toggle"><input type="checkbox" id="secondWheelToggle"><span>Use 2nd wheel</span></label>
           <div id="audioSlot"></div>
         </div>
         <button class="small-action" id="clearBtn" type="button">Clear all</button>
@@ -176,15 +199,26 @@
     </section>
 
     <section class="panel">
-      <div class="result-banner" id="resultBanner" aria-live="polite">
-        <div class="result-label">SELECTED</div>
-        <div class="result-name" id="resultName">—</div>
-      </div>
-
-      <div class="wheel-area">
-        <div class="wheel-pointer"></div>
-        <div class="wheel-wrap" id="wheelWrap">
-          <svg id="wheelSvg" viewBox="0 0 300 300" width="100%" height="100%"></svg>
+      <div class="wheels" id="wheels">
+        <div class="wheel-unit" data-wheel="0">
+          <div class="result-banner" aria-live="polite">
+            <div class="result-label">SELECTED</div>
+            <div class="result-name">—</div>
+          </div>
+          <div class="wheel-area">
+            <div class="wheel-pointer"></div>
+            <div class="wheel-wrap"><svg viewBox="0 0 300 300" width="100%" height="100%"></svg></div>
+          </div>
+        </div>
+        <div class="wheel-unit" data-wheel="1" hidden>
+          <div class="result-banner" aria-live="polite">
+            <div class="result-label">SELECTED</div>
+            <div class="result-name">—</div>
+          </div>
+          <div class="wheel-area">
+            <div class="wheel-pointer"></div>
+            <div class="wheel-wrap"><svg viewBox="0 0 300 300" width="100%" height="100%"></svg></div>
+          </div>
         </div>
       </div>
 
@@ -203,33 +237,26 @@
 
   if (window.SiteAudio) SiteAudio.mount(document.getElementById("audioSlot"));
 
-  const STORAGE_KEY = "snejpenWheelSpinOptions";
   const REMOVE_KEY = "snejpenWheelSpinRemoveWinner";
-  const WEIGHTS_KEY = "snejpenWheelSpinWeights";
   const USE_WEIGHTS_KEY = "snejpenWheelSpinUseWeights";
+  const SECOND_KEY = "snejpenWheelSpinSecondWheel";
+  const DEFAULT_WEIGHT = 10;          // what a new option starts with when weights are on
 
-  const optionsInput = document.getElementById("optionsInput");
+  const page = document.getElementById("page");
   const removeWinnerToggle = document.getElementById("removeWinnerToggle");
   const useWeightsToggle = document.getElementById("useWeightsToggle");
-  const rowsEl = document.getElementById("rows");
+  const secondWheelToggle = document.getElementById("secondWheelToggle");
   const saveWarning = document.getElementById("saveWarning");
   const clearBtn = document.getElementById("clearBtn");
-  const resultBanner = document.getElementById("resultBanner");
-  const resultName = document.getElementById("resultName");
-  const wheelWrap = document.getElementById("wheelWrap");
-  const wheelSvg = document.getElementById("wheelSvg");
   const spinBtn = document.getElementById("spinBtn");
 
-  let wheelNames = [];
-  let wheelWeights = [];     // one weight per slice (all 1 when weights are off)
-  let wheelLines = [];       // which text line each slice came from
-  let wheelStarts = [];      // start angle of each slice, in degrees
-  let wheelSpans = [];       // size of each slice, in degrees
-  let weights = [];          // saved weight for each text line (index = line number)
   let useWeights = false;
-  let wheelRotation = 0;
+  let secondOn = false;
   let spinning = false;
-  let spinTimer = null;
+  let idleHold = false;
+  let wheels = [];
+
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* =========================================================
      Wheel drawing (same wheel as the Random name selector)
@@ -327,19 +354,19 @@
     return el;
   }
 
-  function clearWheel() {
-    while (wheelSvg.firstChild) wheelSvg.removeChild(wheelSvg.firstChild);
+  function clearWheel(svg) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
   }
 
-  function renderWheelPlaceholder() {
-    clearWheel();
-    wheelSvg.appendChild(svgEl("circle", { cx: 150, cy: 150, r: 146, fill: "#1f1f1e", stroke: "#393937", "stroke-width": 2 }));
+  function renderWheelPlaceholder(svg) {
+    clearWheel(svg);
+    svg.appendChild(svgEl("circle", { cx: 150, cy: 150, r: 146, fill: "#1f1f1e", stroke: "#393937", "stroke-width": 2 }));
     const line1 = svgEl("text", { x: 150, y: 142, fill: "#a5a39b", "font-size": 13, "font-family": "sans-serif", "text-anchor": "middle" });
     line1.textContent = "Add an option";
     const line2 = svgEl("text", { x: 150, y: 160, fill: "#a5a39b", "font-size": 13, "font-family": "sans-serif", "text-anchor": "middle" });
     line2.textContent = "to fill the wheel";
-    wheelSvg.appendChild(line1);
-    wheelSvg.appendChild(line2);
+    svg.appendChild(line1);
+    svg.appendChild(line2);
   }
 
   // slice sizes follow the weights: a weight of 5 gets 5 times the angle of a weight of 1
@@ -352,8 +379,8 @@
     return { starts: starts, spans: spans };
   }
 
-  function renderWheel(names, ws) {
-    clearWheel();
+  function renderWheel(svg, names, ws) {
+    clearWheel(svg);
     const n = names.length;
     const geo = wheelGeometry(ws);
     const starts = geo.starts, spans = geo.spans;
@@ -372,13 +399,13 @@
 
     if (n === 1) {
       // a single option is the whole wheel (an arc can't start and end at the same point)
-      wheelSvg.appendChild(svgEl("circle", { cx: cx, cy: cy, r: r, fill: colors[0], stroke: WHEEL_EDGE, "stroke-width": 2 }));
+      svg.appendChild(svgEl("circle", { cx: cx, cy: cy, r: r, fill: colors[0], stroke: WHEEL_EDGE, "stroke-width": 2 }));
     }
     for (let i = 0; i < (n === 1 ? 0 : n); i++) {
       const [x1, y1] = polarPoint(cx, cy, r, starts[i]);
       const [x2, y2] = polarPoint(cx, cy, r, starts[i] + spans[i]);
       const largeArc = spans[i] > 180 ? 1 : 0;
-      wheelSvg.appendChild(svgEl("path", {
+      svg.appendChild(svgEl("path", {
         d: "M " + cx + " " + cy + " L " + x1 + " " + y1 + " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2 + " " + y2 + " Z",
         fill: colors[i],
         stroke: WHEEL_EDGE,
@@ -427,267 +454,341 @@
           "dominant-baseline": "middle"
         }, attrs));
         text.textContent = label;
-        wheelSvg.appendChild(text);
+        svg.appendChild(text);
       }
     }
 
-    wheelSvg.appendChild(svgEl("circle", { cx: cx, cy: cy, r: 15, fill: WHEEL_HUB, stroke: WHEEL_HUB_RING, "stroke-width": 3 }));
+    svg.appendChild(svgEl("circle", { cx: cx, cy: cy, r: 15, fill: WHEEL_HUB, stroke: WHEEL_HUB_RING, "stroke-width": 3 }));
   }
 
-  // keep the angle small and tidy without any visible movement
-  function snapWheelToStart() {
-    wheelRotation = ((wheelRotation % 360) + 360) % 360;
-    wheelWrap.style.transition = "none";
-    wheelWrap.style.transform = "rotate(" + wheelRotation + "deg)";
-    void wheelWrap.offsetWidth; // force reflow so the next spin animates normally
-    wheelWrap.style.transition = "";
-  }
 
-  /* ---- slow idle spin while the wheel waits for a spin ---- */
+  /* =========================================================
+     One wheel with its own list, weights and idle drift
+     ========================================================= */
+
   const IDLE_DEG_PER_SECOND = 7;      // about one turn a minute
-  const IDLE_HOLD_MS = 2500;          // after a result the wheel rests this long before drifting again
-  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let idleFrame = null;
-  let idleLast = 0;
-  let idleHold = false;
+  const IDLE_HOLD_MS = 2500;          // after a result the wheels rest this long before drifting again
+  let saveTimer = null;
 
-  function idleTick(now) {
-    if (!idleLast) idleLast = now;
-    wheelRotation += IDLE_DEG_PER_SECOND * (now - idleLast) / 1000;
-    idleLast = now;
-    wheelWrap.style.transition = "none";
-    wheelWrap.style.transform = "rotate(" + wheelRotation + "deg)";
-    idleFrame = requestAnimationFrame(idleTick);
+  function createWheel(i) {
+    const suffix = i === 0 ? "" : "_2";
+    const STORAGE_KEY = "snejpenWheelSpinOptions" + suffix;        // wheel 1 keeps the key it always had
+    const WEIGHTS_KEY = "snejpenWheelSpinWeightsV2" + suffix;      // V2: weights now start at 10
+
+    const editor = document.querySelector('.editor[data-wheel="' + i + '"]');
+    const unit = document.querySelector('.wheel-unit[data-wheel="' + i + '"]');
+    const optionsInput = editor.querySelector("textarea");
+    const rowsEl = editor.querySelector(".rows");
+    const banner = unit.querySelector(".result-banner");
+    const resultName = unit.querySelector(".result-name");
+    const wheelWrap = unit.querySelector(".wheel-wrap");
+    const wheelSvg = unit.querySelector("svg");
+
+    let weights = [];                // saved weight for each text line (index = line number)
+    let names = [], ws = [], lines = [], starts = [], spans = [];
+    let rotation = 0;
+    let idleFrame = null, idleLast = 0;
+    let spinTimer = null;
+    let winner = -1;
+
+    function rawLines() { return optionsInput.value.split(/\r?\n/); }
+    function setLines(l) { optionsInput.value = l.join("\n"); }
+    function weightAt(n) {
+      const w = weights[n];
+      return typeof w === "number" && isFinite(w) && w > 0 ? w : DEFAULT_WEIGHT;
+    }
+
+    /* ---- idle drift ---- */
+    function idleTick(now) {
+      if (!idleLast) idleLast = now;
+      rotation += IDLE_DEG_PER_SECOND * (now - idleLast) / 1000;
+      idleLast = now;
+      wheelWrap.style.transition = "none";
+      wheelWrap.style.transform = "rotate(" + rotation + "deg)";
+      idleFrame = requestAnimationFrame(idleTick);
+    }
+    function startIdle() {
+      if (reduceMotion || idleFrame !== null || spinning || idleHold || names.length < 1) return;
+      idleLast = 0;
+      idleFrame = requestAnimationFrame(idleTick);
+    }
+    function stopIdle() {
+      if (idleFrame !== null) cancelAnimationFrame(idleFrame);
+      idleFrame = null;
+      wheelWrap.style.transition = "";
+      void wheelWrap.offsetWidth;
+    }
+    function normalize() {   // keep the angle tidy without any visible movement
+      rotation = ((rotation % 360) + 360) % 360;
+      wheelWrap.style.transition = "none";
+      wheelWrap.style.transform = "rotate(" + rotation + "deg)";
+      void wheelWrap.offsetWidth;
+      wheelWrap.style.transition = "";
+    }
+
+    /* ---- drawing ---- */
+    function refresh() {
+      names = []; ws = []; lines = [];
+      rawLines().forEach(function (line, n) {
+        const t = line.trim();
+        if (!t) return;
+        names.push(t); lines.push(n); ws.push(useWeights ? weightAt(n) : 1);
+      });
+      if (names.length >= 1) {
+        const geo = wheelGeometry(ws);
+        starts = geo.starts; spans = geo.spans;
+        renderWheel(wheelSvg, names, ws);
+      } else {
+        renderWheelPlaceholder(wheelSvg);
+      }
+      if (names.length < 1) { stopIdle(); rotation = 0; wheelWrap.style.transform = "rotate(0deg)"; }
+      else startIdle();
+      updateSpinButton();
+    }
+
+    /* ---- saving ---- */
+    function save() {
+      try {
+        localStorage.setItem(STORAGE_KEY, optionsInput.value);
+        localStorage.setItem(WEIGHTS_KEY, JSON.stringify(rawLines().map(function (_, n) { return weightAt(n); })));
+        saveWarning.style.display = "none";
+      } catch (err) {
+        saveWarning.style.display = "block";
+      }
+    }
+
+    function changed() {
+      banner.classList.remove("show");
+      normalize();
+      refresh();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(saveAll, 250);
+    }
+
+    /* ---- weights editor ---- */
+    function renderRows() {
+      rowsEl.textContent = "";
+      rawLines().forEach(function (line, n) {
+        const name = document.createElement("input");
+        name.type = "text"; name.value = line; name.placeholder = "Option"; name.spellcheck = false;
+        name.setAttribute("aria-label", "Option " + (n + 1));
+        const weight = document.createElement("input");
+        weight.type = "number"; weight.min = "0"; weight.step = "any"; weight.value = weightAt(n);
+        weight.setAttribute("aria-label", "Weight for option " + (n + 1));
+        const del = document.createElement("button");
+        del.type = "button"; del.className = "del"; del.textContent = "×"; del.title = "Remove option";
+        del.setAttribute("aria-label", "Remove option " + (n + 1));
+        const row = document.createElement("div");
+        row.className = "row";
+        row.appendChild(name); row.appendChild(weight); row.appendChild(del);
+        rowsEl.appendChild(row);
+
+        name.addEventListener("input", function () { collectRows(); changed(); });
+        name.addEventListener("keydown", function (e) {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          insertRow(n + 1);
+        });
+        weight.addEventListener("input", function () {
+          const v = parseFloat(weight.value);
+          weights[n] = v > 0 ? v : DEFAULT_WEIGHT;
+          changed();
+        });
+        weight.addEventListener("blur", function () { weight.value = weightAt(n); });
+        del.addEventListener("click", function () {
+          const l = rawLines();
+          l.splice(n, 1); weights.splice(n, 1);
+          setLines(l);
+          renderRows();
+          changed();
+        });
+      });
+      const add = document.createElement("button");
+      add.type = "button"; add.className = "add-row"; add.textContent = "+ Add option";
+      add.addEventListener("click", function () { insertRow(rawLines().length); });
+      rowsEl.appendChild(add);
+    }
+
+    function collectRows() {
+      setLines(Array.prototype.map.call(rowsEl.querySelectorAll(".row input[type=text]"), function (el) { return el.value.replace(/[\r\n]+/g, " "); }));
+    }
+
+    function insertRow(at) {
+      const l = rawLines();
+      l.splice(at, 0, "");
+      weights.splice(at, 0, DEFAULT_WEIGHT);
+      setLines(l);
+      renderRows();
+      const inputs = rowsEl.querySelectorAll(".row input[type=text]");
+      if (inputs[at]) inputs[at].focus();
+      changed();
+    }
+
+    function showMode() {
+      optionsInput.hidden = useWeights;
+      rowsEl.hidden = !useWeights;
+      if (useWeights) renderRows();
+      banner.classList.remove("show");
+      refresh();
+    }
+
+    optionsInput.addEventListener("input", changed);
+
+    function setEditable(on) {
+      optionsInput.disabled = !on;
+      rowsEl.querySelectorAll("input, button").forEach(function (el) { el.disabled = !on; });
+    }
+
+    function clearList() {
+      optionsInput.value = "";
+      weights = [];
+      if (useWeights) renderRows();
+      banner.classList.remove("show");
+      normalize();
+      refresh();
+    }
+
+    /* ---- spinning ---- */
+    function hasOptions() { return names.length >= 1; }
+
+    // starts this wheel turning toward a weighted random winner
+    function beginSpin() {
+      stopIdle();
+      banner.classList.remove("show");
+      const total = ws.reduce(function (a, b) { return a + b; }, 0);
+      let pick = Math.random() * total;
+      winner = ws.length - 1;
+      for (let n = 0; n < ws.length; n++) {
+        pick -= ws[n];
+        if (pick < 0) { winner = n; break; }
+      }
+      const centerAngle = starts[winner] + spans[winner] / 2;
+      const targetOffset = ((-centerAngle % 360) + 360) % 360;
+      const baseline = Math.ceil((rotation + 1) / 360) * 360;
+      let next = baseline + 5 * 360 + targetOffset;
+      while (next <= rotation) next += 360;
+      rotation = next;
+      wheelWrap.style.transform = "rotate(" + rotation + "deg)";
+    }
+
+    function showWinner() {
+      resultName.textContent = names[winner];
+      banner.classList.add("show");
+    }
+
+    function removeWinner() {
+      const l = rawLines();
+      l.splice(lines[winner], 1);
+      weights.splice(lines[winner], 1);
+      setLines(l);
+      if (useWeights) renderRows();
+      normalize();
+    }
+
+    function load() {
+      try {
+        optionsInput.value = localStorage.getItem(STORAGE_KEY) || "";
+        const saved = JSON.parse(localStorage.getItem(WEIGHTS_KEY) || "[]");
+        if (Array.isArray(saved)) weights = saved;
+      } catch (err) {}
+    }
+
+    return {
+      refresh: refresh, save: save, showMode: showMode, load: load, setEditable: setEditable,
+      clearList: clearList, hasOptions: hasOptions, beginSpin: beginSpin, showWinner: showWinner,
+      removeWinner: removeWinner, startIdle: startIdle, normalize: normalize, hideBanner: function () { banner.classList.remove("show"); },
+      isEmpty: function () { return !optionsInput.value.trim(); },
+      focus: function () { optionsInput.focus(); }
+    };
   }
 
-  function startIdle() {
-    if (reduceMotion || idleFrame !== null || spinning || idleHold || wheelNames.length < 1) return;
-    idleLast = 0;
-    idleFrame = requestAnimationFrame(idleTick);
-  }
-
-  function stopIdle() {
-    if (idleFrame !== null) cancelAnimationFrame(idleFrame);
-    idleFrame = null;
-    wheelWrap.style.transition = "";   // back to the long ease-out used for real spins
-    void wheelWrap.offsetWidth;        // apply that before the next transform is set
+  function activeWheels() { return secondOn ? wheels : [wheels[0]]; }
+  function saveAll() { wheels.forEach(function (w) { w.save(); }); }
+  function updateSpinButton() {
+    spinBtn.disabled = spinning || !activeWheels().some(function (w) { return w.hasOptions(); });
   }
 
   /* =========================================================
-     Options: one per line, saved in this browser
+     Controls shared by both wheels
      ========================================================= */
 
-  function rawLines() { return optionsInput.value.split(/\r?\n/); }
-
-  function weightAt(i) {
-    const w = weights[i];
-    return typeof w === "number" && isFinite(w) && w > 0 ? w : 1;
+  function setSecond(on) {
+    secondOn = on;
+    secondWheelToggle.checked = on;
+    document.querySelector('.editor[data-wheel="1"]').hidden = !on;
+    document.querySelector('.wheel-unit[data-wheel="1"]').hidden = !on;
+    document.querySelector(".layout").classList.toggle("two", on);
+    page.classList.toggle("wide", on);
+    wheels[0].refresh();            // the first wheel changes size when it shares the row
+    if (on) wheels[1].refresh();
+    updateSpinButton();
   }
 
-  function setLines(lines) { optionsInput.value = lines.join("\n"); }
-
-  // take one option (by its line number) out of the list, together with its weight
-  function removeOption(lineIndex) {
-    const lines = rawLines();
-    lines.splice(lineIndex, 1);
-    weights.splice(lineIndex, 1);
-    setLines(lines);
-    if (useWeights) renderRows();
-  }
-
-  function save() {
-    try {
-      localStorage.setItem(STORAGE_KEY, optionsInput.value);
-      localStorage.setItem(WEIGHTS_KEY, JSON.stringify(rawLines().map(function (_, i) { return weightAt(i); })));
-      localStorage.setItem(USE_WEIGHTS_KEY, useWeights ? "1" : "0");
-      saveWarning.style.display = "none";
-    } catch (err) {
-      saveWarning.style.display = "block";
-    }
-  }
-
-  function refreshWheel() {
-    wheelNames = []; wheelWeights = []; wheelLines = [];
-    rawLines().forEach(function (line, i) {
-      const t = line.trim();
-      if (!t) return;
-      wheelNames.push(t);
-      wheelLines.push(i);
-      wheelWeights.push(useWeights ? weightAt(i) : 1);
-    });
-    if (wheelNames.length >= 1) {
-      const geo = wheelGeometry(wheelWeights);
-      wheelStarts = geo.starts; wheelSpans = geo.spans;
-      renderWheel(wheelNames, wheelWeights);
-    } else {
-      renderWheelPlaceholder();
-    }
-    spinBtn.disabled = wheelNames.length < 1 || spinning;
-    if (wheelNames.length < 1) { stopIdle(); wheelRotation = 0; wheelWrap.style.transform = "rotate(0deg)"; }
-    else startIdle();
-  }
-
-  /* ---- weights editor: one row per option, shown instead of the text box ---- */
-
-  function renderRows() {
-    rowsEl.textContent = "";
-    rawLines().forEach(function (line, i) {
-      const name = document.createElement("input");
-      name.type = "text"; name.value = line; name.placeholder = "Option"; name.spellcheck = false;
-      name.setAttribute("aria-label", "Option " + (i + 1));
-      const weight = document.createElement("input");
-      weight.type = "number"; weight.min = "0"; weight.step = "any"; weight.value = weightAt(i);
-      weight.setAttribute("aria-label", "Weight for option " + (i + 1));
-      const del = document.createElement("button");
-      del.type = "button"; del.className = "del"; del.textContent = "×"; del.title = "Remove option";
-      del.setAttribute("aria-label", "Remove option " + (i + 1));
-      const row = document.createElement("div");
-      row.className = "row";
-      row.appendChild(name); row.appendChild(weight); row.appendChild(del);
-      rowsEl.appendChild(row);
-
-      name.addEventListener("input", function () { collectRows(); changed(); });
-      name.addEventListener("keydown", function (e) {
-        if (e.key !== "Enter") return;
-        e.preventDefault();
-        insertRow(i + 1);
-      });
-      weight.addEventListener("input", function () {
-        const v = parseFloat(weight.value);
-        weights[i] = v > 0 ? v : 1;
-        changed();
-      });
-      weight.addEventListener("blur", function () { weight.value = weightAt(i); });
-      del.addEventListener("click", function () {
-        const lines = rawLines();
-        lines.splice(i, 1); weights.splice(i, 1);
-        setLines(lines);
-        renderRows();
-        changed();
-      });
-    });
-    const add = document.createElement("button");
-    add.type = "button"; add.className = "add-row"; add.textContent = "+ Add option";
-    add.addEventListener("click", function () { insertRow(rawLines().length); });
-    rowsEl.appendChild(add);
-  }
-
-  // copy what's typed in the rows back into the text (the text is what gets saved)
-  function collectRows() {
-    const names = Array.prototype.map.call(rowsEl.querySelectorAll(".row input[type=text]"), function (el) { return el.value.replace(/[\r\n]+/g, " "); });
-    setLines(names);
-  }
-
-  function insertRow(at) {
-    const lines = rawLines();
-    if (lines.length === 1 && lines[0] === "" && at === 1) { /* empty box: reuse its one blank line */ }
-    lines.splice(at, 0, "");
-    weights.splice(at, 0, 1);
-    setLines(lines);
-    renderRows();
-    const inputs = rowsEl.querySelectorAll(".row input[type=text]");
-    if (inputs[at]) inputs[at].focus();
-    changed();
-  }
-
-  function setUseWeights(on) {
-    useWeights = on;
-    useWeightsToggle.checked = on;
-    optionsInput.hidden = on;
-    rowsEl.hidden = !on;
-    if (on) renderRows();
-    resultBanner.classList.remove("show");
-    refreshWheel();
-  }
-
-  // everything that edits the list ends up here
-  function changed() {
-    resultBanner.classList.remove("show");
-    snapWheelToStart();
-    refreshWheel();
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(save, 250);
-  }
-
-  // the wheel can't change mid-spin
-  function setEditable(on) {
-    optionsInput.disabled = !on;
-    clearBtn.disabled = !on;
-    useWeightsToggle.disabled = !on;
-    rowsEl.querySelectorAll("input, button").forEach(function (el) { el.disabled = !on; });
-  }
-
-  let saveTimer = null;
-  optionsInput.addEventListener("input", changed);
-  useWeightsToggle.addEventListener("change", function () { setUseWeights(useWeightsToggle.checked); save(); });
-  window.addEventListener("pagehide", function () { clearTimeout(saveTimer); save(); });
-
-  clearBtn.addEventListener("click", function () {
-    if (!optionsInput.value.trim()) return;
-    if (!window.confirm("Remove all options from the wheel?")) return;
-    optionsInput.value = "";
-    weights = [];
-    if (useWeights) renderRows();
-    resultBanner.classList.remove("show");
-    snapWheelToStart();
-    refreshWheel();
-    save();
-    if (!useWeights) optionsInput.focus();
+  secondWheelToggle.addEventListener("change", function () {
+    setSecond(secondWheelToggle.checked);
+    try { localStorage.setItem(SECOND_KEY, secondOn ? "1" : "0"); } catch (err) {}
   });
 
+  useWeightsToggle.addEventListener("change", function () {
+    useWeights = useWeightsToggle.checked;
+    wheels.forEach(function (w) { w.showMode(); });
+    saveAll();
+    try { localStorage.setItem(USE_WEIGHTS_KEY, useWeights ? "1" : "0"); } catch (err) {}
+  });
+
+  removeWinnerToggle.addEventListener("change", function () {
+    try { localStorage.setItem(REMOVE_KEY, removeWinnerToggle.checked ? "1" : "0"); } catch (err) {}
+  });
+
+  clearBtn.addEventListener("click", function () {
+    if (activeWheels().every(function (w) { return w.isEmpty(); })) return;
+    if (!window.confirm(secondOn ? "Remove all options from both wheels?" : "Remove all options from the wheel?")) return;
+    activeWheels().forEach(function (w) { w.clearList(); });
+    saveAll();
+    wheels[0].focus();
+  });
+
+  window.addEventListener("pagehide", function () { clearTimeout(saveTimer); saveAll(); });
+
+  function setEditableAll(on) {
+    wheels.forEach(function (w) { w.setEditable(on); });
+    clearBtn.disabled = !on;
+    useWeightsToggle.disabled = !on;
+    secondWheelToggle.disabled = !on;
+  }
+
   /* =========================================================
-     Spinning
+     Spinning: one button turns every active wheel at once
      ========================================================= */
 
-  function spinWheel() {
-    if (spinning || wheelNames.length < 1) return;
+  function spinAll() {
+    const going = activeWheels().filter(function (w) { return w.hasOptions(); });
+    if (spinning || !going.length) return;
 
-    stopIdle();           // the spin carries on smoothly from wherever the idle drift has reached
     spinning = true;
     spinBtn.disabled = true;
-    setEditable(false);
-    resultBanner.classList.remove("show");
-
-    // weighted draw: each slice is picked in proportion to its weight
-    const total = wheelWeights.reduce(function (a, b) { return a + b; }, 0);
-    let pick = Math.random() * total;
-    let winnerIndex = wheelWeights.length - 1;
-    for (let i = 0; i < wheelWeights.length; i++) {
-      pick -= wheelWeights[i];
-      if (pick < 0) { winnerIndex = i; break; }
-    }
-    const centerAngle = wheelStarts[winnerIndex] + wheelSpans[winnerIndex] / 2;
-    const targetOffset = ((-centerAngle % 360) + 360) % 360;
-
-    const baseline = Math.ceil((wheelRotation + 1) / 360) * 360;
-    let newRotation = baseline + 5 * 360 + targetOffset;
-    while (newRotation <= wheelRotation) newRotation += 360;
-    wheelRotation = newRotation;
-
-    wheelWrap.style.transform = "rotate(" + wheelRotation + "deg)";
+    setEditableAll(false);
+    going.forEach(function (w) { w.beginSpin(); });
     if (window.SiteAudio) SiteAudio.spin();
 
-    spinTimer = setTimeout(function () {
-      resultName.textContent = wheelNames[winnerIndex];
+    setTimeout(function () {
+      going.forEach(function (w) { w.showWinner(); });
       if (window.SiteAudio) SiteAudio.win();
-      resultBanner.classList.add("show");
       spinBtn.textContent = "Spin again";
 
       function finish() {
         spinning = false;
-        spinTimer = null;
-        setEditable(true);
-        idleHold = true;      // let the result sit under the pointer for a moment, then drift again
-        refreshWheel();       // also sets the Spin button's state
-        setTimeout(function () { idleHold = false; startIdle(); }, IDLE_HOLD_MS);
+        setEditableAll(true);
+        idleHold = true;      // let the results sit under the pointers for a moment, then drift again
+        wheels.forEach(function (w) { w.refresh(); });
+        updateSpinButton();
+        setTimeout(function () { idleHold = false; wheels.forEach(function (w) { w.startIdle(); }); }, IDLE_HOLD_MS);
       }
 
       if (removeWinnerToggle.checked) {
-        // let the wheel sit on the winner for a moment, then take it off the list
-        spinTimer = setTimeout(function () {
-          removeOption(wheelLines[winnerIndex]);
-          snapWheelToStart();
-          save();
+        // let the wheels sit on the winners for a moment, then take them off the lists
+        setTimeout(function () {
+          going.forEach(function (w) { w.removeWinner(); w.save(); });
           finish();
         }, 1500);
       } else {
@@ -695,24 +796,22 @@
       }
     }, SPIN_DURATION_MS);
   }
-  spinBtn.addEventListener("click", spinWheel);
+  spinBtn.addEventListener("click", spinAll);
 
   /* =========================================================
      Start-up: bring back what was saved last time
      ========================================================= */
 
-  removeWinnerToggle.addEventListener("change", function () {
-    try { localStorage.setItem(REMOVE_KEY, removeWinnerToggle.checked ? "1" : "0"); } catch (err) {}
-  });
-
+  wheels = [createWheel(0), createWheel(1)];
+  wheels.forEach(function (w) { w.load(); });
   try {
-    optionsInput.value = localStorage.getItem(STORAGE_KEY) || "";
     removeWinnerToggle.checked = localStorage.getItem(REMOVE_KEY) === "1";
-    const savedWeights = JSON.parse(localStorage.getItem(WEIGHTS_KEY) || "[]");
-    if (Array.isArray(savedWeights)) weights = savedWeights;
     useWeights = localStorage.getItem(USE_WEIGHTS_KEY) === "1";
+    secondOn = localStorage.getItem(SECOND_KEY) === "1";
   } catch (err) {}
-  setUseWeights(useWeights);
+  useWeightsToggle.checked = useWeights;
+  wheels.forEach(function (w) { w.showMode(); });
+  setSecond(secondOn);
 })();
 </script>
 </body>
