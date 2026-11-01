@@ -57,8 +57,7 @@
     color: var(--text-dim);
   }
   .toggles { display: flex; flex-direction: column; gap: 8px; }
-  .rows[hidden], .weights-hint[hidden], textarea[hidden] { display: none; }
-  .weights-hint { margin: 0 0 8px; font-size: 12.5px; line-height: 1.4; color: var(--text-dim); }
+  .rows[hidden], textarea[hidden] { display: none; }
   .rows {
     flex: 1 1 0;               /* same size as the text box, scrolls when there are many options */
     min-height: 240px;
@@ -161,7 +160,6 @@
       <h1>Wheel spin</h1>
       <p class="hint">Type your options, one per line. They appear on the wheel as you type and are saved on this device, so they're still here next time.</p>
       <label for="optionsInput" class="sr-only" style="position:absolute;left:-9999px">Wheel options</label>
-      <p class="weights-hint" id="weightsHint" hidden>Weight 1 is normal. A weight of 5 makes the slice 5 times bigger and 5 times as likely to win.</p>
       <textarea id="optionsInput" spellcheck="false" placeholder="Pizza&#10;Sushi&#10;Tacos&#10;Burgers"></textarea>
       <div class="rows" id="rows" hidden></div>
       <div class="list-foot">
@@ -209,7 +207,6 @@
   const removeWinnerToggle = document.getElementById("removeWinnerToggle");
   const useWeightsToggle = document.getElementById("useWeightsToggle");
   const rowsEl = document.getElementById("rows");
-  const weightsHint = document.getElementById("weightsHint");
   const saveWarning = document.getElementById("saveWarning");
   const clearBtn = document.getElementById("clearBtn");
   const resultBanner = document.getElementById("resultBanner");
@@ -593,7 +590,6 @@
     useWeightsToggle.checked = on;
     optionsInput.hidden = on;
     rowsEl.hidden = !on;
-    weightsHint.hidden = !on;
     if (on) renderRows();
     resultBanner.classList.remove("show");
     refreshWheel();
