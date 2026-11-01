@@ -188,6 +188,7 @@
       <div class="wheel-controls">
         <button class="primary-action" id="spinBtn" disabled>Spin the wheel</button>
       </div>
+      <div id="audioSlot"></div>
     </section>
 
   </div>
@@ -197,6 +198,8 @@
 <script>
 (function () {
   "use strict";
+
+  if (window.SiteAudio) SiteAudio.mount(document.getElementById("audioSlot"));
 
   const STORAGE_KEY = "snejpenWheelSpinOptions";
   const REMOVE_KEY = "snejpenWheelSpinRemoveWinner";
@@ -660,9 +663,11 @@
     wheelRotation = newRotation;
 
     wheelWrap.style.transform = "rotate(" + wheelRotation + "deg)";
+    if (window.SiteAudio) SiteAudio.spin();
 
     spinTimer = setTimeout(function () {
       resultName.textContent = wheelNames[winnerIndex];
+      if (window.SiteAudio) SiteAudio.win();
       resultBanner.classList.add("show");
       spinBtn.textContent = "Spin again";
 

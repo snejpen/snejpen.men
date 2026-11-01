@@ -279,6 +279,64 @@
     paintTheme(theme);
   }
 
+  /* ---------- wheel sounds (Buttsoap theme only) ----------
+     Pages call SiteAudio.spin() when a spin starts and SiteAudio.win() when it lands.
+     Nothing plays unless the Buttsoap theme is on and "Use audio" is ticked. */
+
+  const AUDIO_KEY = "snejpenUseAudio";
+  const SiteAudio = (function () {
+    let enabled = false;
+    try { enabled = localStorage.getItem(AUDIO_KEY) === "1"; } catch (err) {}
+    let spinSound = null, winSound = null, fadeTimer = null;
+
+    function active() { return enabled && document.body.classList.contains("buttsoap"); }
+    function load(path) { const a = new Audio(path); a.preload = "auto"; return a; }
+
+    function stopSpin() {
+      if (!spinSound) return;
+      clearInterval(fadeTimer);
+      const snd = spinSound;
+      let v = snd.volume;
+      fadeTimer = setInterval(function () {      // quick fade so the sound doesn't cut off with a click
+        v -= 0.2;
+        if (v <= 0) { clearInterval(fadeTimer); snd.pause(); snd.currentTime = 0; snd.volume = 1; }
+        else snd.volume = v;
+      }, 25);
+    }
+
+    return {
+      mount: function (container) {
+        if (!container) return;
+        const box = el("input", { type: "checkbox", id: "useAudioToggle" });
+        box.checked = enabled;
+        box.addEventListener("change", function () {
+          enabled = box.checked;
+          try { localStorage.setItem(AUDIO_KEY, enabled ? "1" : "0"); } catch (err) {}
+          if (!enabled) { if (spinSound) { spinSound.pause(); spinSound.currentTime = 0; } }
+          else { spinSound = spinSound || load("Sounds/HamburgerSpin.mp3"); winSound = winSound || load("Sounds/HamburgerWin.mp3"); }
+        });
+        container.className = "audio-toggle";
+        container.appendChild(el("label", {}, [box, el("span", { text: "Use audio" })]));
+      },
+      spin: function () {
+        if (!active()) return;
+        clearInterval(fadeTimer);
+        spinSound = spinSound || load("Sounds/HamburgerSpin.mp3");
+        spinSound.volume = 1;
+        spinSound.currentTime = 0;
+        const p = spinSound.play(); if (p && p.catch) p.catch(function () {});
+      },
+      win: function () {
+        if (!active()) return;
+        stopSpin();
+        winSound = winSound || load("Sounds/HamburgerWin.mp3");
+        winSound.currentTime = 0;
+        const p = winSound.play(); if (p && p.catch) p.catch(function () {});
+      }
+    };
+  })();
+  window.SiteAudio = SiteAudio;
+
   function buildThemeHint() {
     if (currentFile() !== SITE.home || !document.querySelector(".nav-corner")) return;
     const svgNS = "http://www.w3.org/2000/svg";

@@ -360,6 +360,7 @@
           <button class="primary-action" id="spinBtn" disabled>Spin the wheel</button>
           <button class="secondary-action" id="resetBtn">Reset</button>
         </div>
+      <div id="audioSlot"></div>
       </div>
     </div>
   </div>
@@ -371,6 +372,8 @@
 
 (function () {
   "use strict";
+
+  if (window.SiteAudio) SiteAudio.mount(document.getElementById("audioSlot"));
 
   /* =========================================================
      Twitch chat connection & entry collection
@@ -814,9 +817,11 @@
     wheelRotation = newRotation;
 
     wheelWrap.style.transform = "rotate(" + wheelRotation + "deg)";
+    if (window.SiteAudio) SiteAudio.spin();
 
     spinTimer = setTimeout(function () {
       resultName.textContent = wheelNames[winnerIndex];
+      if (window.SiteAudio) SiteAudio.win();
       resultBanner.style.display = "block";
       spinning = false;
       spinTimer = null;
