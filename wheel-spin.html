@@ -9,6 +9,7 @@
   /* Styles that only this page needs. Shared styles live in site.css */
 
   .layout {
+    --wheel-size: min(clamp(300px, 70vmin, 800px), 650px);
     display: grid;
     grid-template-columns: minmax(260px, 340px) 1fr;
     gap: 20px;
@@ -126,7 +127,7 @@
     z-index: 2;
   }
   .wheel-wrap {
-    width: min(100%, clamp(300px, 70vmin, 800px));
+    width: min(100%, var(--wheel-size));   /* the same size with one wheel or two */
     aspect-ratio: 1 / 1;
     border-radius: 50%;
     box-shadow: 0 0 0 8px var(--bg-raised), 0 0 0 9px var(--line-strong), 0 14px 40px rgba(0,0,0,0.55);
