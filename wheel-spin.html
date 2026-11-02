@@ -853,7 +853,9 @@
       pick -= ws[n];
       if (pick < 0) { winner = n; break; }
     }
-    const centerAngle = starts[winner] + spans[winner] / 2;
+    // land anywhere inside the winning slice (kept a little clear of the edges so there's no doubt which one it is)
+    const margin = Math.min(spans[winner] * 0.1, 3);
+    const centerAngle = starts[winner] + margin + Math.random() * Math.max(0, spans[winner] - 2 * margin);
     const targetOffset = ((-centerAngle % 360) + 360) % 360;
     const baseline = Math.ceil((rotation + 1) / 360) * 360;
     let next = baseline + 5 * 360 + targetOffset;
