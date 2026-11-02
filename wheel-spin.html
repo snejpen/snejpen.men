@@ -152,6 +152,7 @@
   .small-action:hover { background: var(--bg-raised-hover); }
 
   /* ---------- wheel picker ---------- */
+  .foot-actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; flex: none; }
   .wheel-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
   .wheel-picker select, .wheel-picker input[type="text"] {
     flex: 1 1 90px;
@@ -201,7 +202,10 @@
           <label class="remove-toggle"><input type="checkbox" id="removeWinnerToggle"><span>Remove winner from the list</span></label>
           <div id="audioSlot"></div>
         </div>
-        <button class="small-action" id="clearBtn" type="button">Clear all</button>
+        <div class="foot-actions">
+          <button class="small-action" id="clearBtn" type="button">Clear all</button>
+          <button class="small-action" id="shuffleBtn" type="button">Shuffle</button>
+        </div>
       </div>
       <p class="save-warning" id="saveWarning">Couldn't save in this browser, so your wheels won't be kept.</p>
     </section>
@@ -247,6 +251,7 @@
   const useWeightsToggle = document.getElementById("useWeightsToggle");
   const saveWarning = document.getElementById("saveWarning");
   const clearBtn = document.getElementById("clearBtn");
+  const shuffleBtn = document.getElementById("shuffleBtn");
   const spinBtn = document.getElementById("spinBtn");
   const resultBanner = document.getElementById("resultBanner");
   const resultName = document.getElementById("resultName");
@@ -821,6 +826,22 @@
     if (!useWeights) optionsInput.focus();
   });
 
+  shuffleBtn.addEventListener("click", function () {
+    if (spinning) return;
+    // shuffle the filled-in options (each keeps its own weight); blank lines are dropped
+    const items = [];
+    rawLines().forEach(function (line, n) { if (line.trim()) items.push({ text: line, weight: weightAt(n) }); });
+    if (items.length < 2) return;
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = items[i]; items[i] = items[j]; items[j] = t;
+    }
+    setLines(items.map(function (it) { return it.text; }));
+    weights = items.map(function (it) { return it.weight; });
+    if (useWeights) renderRows();
+    changed();
+  });
+
   window.addEventListener("pagehide", function () { if (renaming) endRename(true); saveNow(); });
 
   // the wheel and the lists can't change mid-spin
@@ -828,6 +849,7 @@
     optionsInput.disabled = on;
     rowsEl.querySelectorAll("input, button").forEach(function (el) { el.disabled = on; });
     clearBtn.disabled = on;
+    shuffleBtn.disabled = on;
     useWeightsToggle.disabled = on;
     renderPicker();
   }
