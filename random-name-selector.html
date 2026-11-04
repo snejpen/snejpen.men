@@ -755,7 +755,39 @@
     wheelSvg.appendChild(svgEl("circle", { cx: cx, cy: cy, r: 15, fill: WHEEL_HUB, stroke: WHEEL_HUB_RING, "stroke-width": 3 }));
   }
 
+  /* ---- idle drift: the wheel turns slowly while it waits to be spun ---- */
+  const IDLE_DEG_PER_SECOND = 7;   // about one turn a minute
+  const IDLE_HOLD_MS = 2500;       // after a result the wheel rests this long before drifting again
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let idleFrame = null, idleLast = 0, idleHold = false, idleHoldTimer = null;
+
+  function idleTick(now) {
+    if (!idleLast) idleLast = now;
+    wheelRotation += IDLE_DEG_PER_SECOND * (now - idleLast) / 1000;
+    idleLast = now;
+    wheelWrap.style.transition = "none";
+    wheelWrap.style.transform = "rotate(" + wheelRotation + "deg)";
+    idleFrame = requestAnimationFrame(idleTick);
+  }
+  function startIdle() {
+    if (reduceMotion || idleFrame !== null || spinning || idleHold || wheelNames.length < 2) return;
+    idleLast = 0;
+    idleFrame = requestAnimationFrame(idleTick);
+  }
+  function stopIdle() {
+    if (idleFrame !== null) cancelAnimationFrame(idleFrame);
+    idleFrame = null;
+    wheelWrap.style.transition = "";
+    void wheelWrap.offsetWidth;   // the spin carries on smoothly from wherever the drift had reached
+  }
+  function holdIdle() {
+    idleHold = true;
+    clearTimeout(idleHoldTimer);
+    idleHoldTimer = setTimeout(function () { idleHold = false; startIdle(); }, IDLE_HOLD_MS);
+  }
+
   function snapWheelToStart() {
+    stopIdle();
     wheelRotation = 0;
     wheelWrap.style.transition = "none";
     wheelWrap.style.transform = "rotate(0deg)";
@@ -768,6 +800,8 @@
     if (wheelNames.length >= 2) renderWheel(wheelNames);
     else renderWheelPlaceholder();
     spinBtn.disabled = wheelNames.length < 2 || spinning;
+    if (wheelNames.length < 2) { stopIdle(); wheelRotation = 0; wheelWrap.style.transform = "rotate(0deg)"; }
+    else startIdle();
   }
 
   function spinWheel() {
@@ -779,6 +813,9 @@
       lockBtn.textContent = "Entries locked";
       lockBtn.classList.add("locked");
     }
+    stopIdle();
+    clearTimeout(idleHoldTimer);
+    idleHold = false;
     hasSpun = true;
     spinning = true;
     spinBtn.disabled = true;
@@ -811,6 +848,7 @@
       spinBtn.disabled = false;
       spinBtn.textContent = "Spin again";
       resetBtn.hidden = false;
+      holdIdle();   // let the result sit under the pointer for a moment, then drift again
     }, SPIN_DURATION_MS);
   }
 
@@ -825,6 +863,8 @@
     resultBanner.style.display = "none";
     spinBtn.textContent = "Spin the wheel";
     resetBtn.hidden = true;
+    clearTimeout(idleHoldTimer);
+    idleHold = false;
     expandEntries();
     snapWheelToStart();
     refreshWheel();
