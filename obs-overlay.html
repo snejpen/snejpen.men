@@ -5,16 +5,318 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OBS overlay — Snejpen.men</title>
 <link rel="stylesheet" href="site.css">
+<style>
+  /* ---------- the counter itself (used by the preview and by the real overlay) ---------- */
+  .counter {
+    display: inline-flex; align-items: baseline; gap: 0.35em;
+    font-family: var(--sans); font-weight: 800; line-height: 1.1;
+    padding: 0.25em 0.55em; border-radius: 0.35em;
+    white-space: nowrap;
+  }
+  .counter .label { font-weight: 700; }
+  .counter .num { font-variant-numeric: tabular-nums; }
+  .counter.box { background: rgba(0, 0, 0, 0.6); }
+  .counter.bump .num { animation: bump 0.25s ease; }
+  @keyframes bump { 50% { transform: scale(1.25); } }
+
+  /* ---------- real overlay mode: nothing but the counter, see-through ---------- */
+  body.overlay, html.overlay { background: transparent !important; }
+  body.overlay { margin: 0; padding: 12px; overflow: hidden; }
+
+  /* ---------- setup page ---------- */
+  .obs-layout { display: grid; grid-template-columns: minmax(260px, 380px) 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .obs-layout { grid-template-columns: minmax(0, 1fr); } }
+  .obs-layout > *, .stack > * { min-width: 0; }
+  .url-row input { text-overflow: ellipsis; }
+  .obs-panel { background: var(--bg-panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); }
+  .obs-panel h1 { margin: 0 0 6px; font-size: 22px; }
+  .obs-panel h2 { margin: 0 0 12px; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+  .obs-panel p.hint { margin: 0 0 16px; color: var(--text-dim); font-size: 14px; line-height: 1.45; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .field > span, .field > label { font-size: 13px; color: var(--text-dim); }
+  .field input[type="text"], .field input[type="number"], .field select {
+    background: var(--bg-input); color: var(--text); border: 1px solid var(--line-strong);
+    border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: var(--sans); min-width: 0;
+  }
+  .field input[type="color"] { width: 100%; height: 38px; padding: 2px; background: var(--bg-input); border: 1px solid var(--line-strong); border-radius: 8px; }
+  .field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .field input:disabled { opacity: 0.45; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 12px; cursor: pointer; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .btn { padding: 8px 14px; border-radius: 8px; font-size: 13.5px; background: var(--bg-raised); border: 1px solid var(--line-strong); color: var(--text); }
+  .btn:hover { background: var(--bg-raised-hover); }
+  .btn.primary { background: var(--primary); color: var(--on-primary); border-color: transparent; font-weight: 600; }
+  .btn.primary:hover { background: var(--primary-hover); }
+  .status { font-size: 13px; color: var(--text-dim); margin: 10px 0 0; min-height: 1.3em; }
+  .preview-stage {
+    min-height: 220px; border-radius: 10px; border: 1px solid var(--line-strong);
+    display: flex; align-items: center; justify-content: center; padding: 20px; overflow: auto;
+    background-color: #2b2b2a;
+    background-image: linear-gradient(45deg, #353533 25%, transparent 25%, transparent 75%, #353533 75%),
+                      linear-gradient(45deg, #353533 25%, transparent 25%, transparent 75%, #353533 75%);
+    background-size: 20px 20px; background-position: 0 0, 10px 10px;
+  }
+  .url-row { display: flex; gap: 8px; margin-top: 8px; }
+  .url-row input { flex: 1; min-width: 0; background: var(--bg-input); color: var(--text); border: 1px solid var(--line-strong); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; font-family: var(--mono); }
+  .steps { margin: 14px 0 0; padding-left: 18px; color: var(--text-dim); font-size: 13.5px; line-height: 1.55; }
+  .stack { display: flex; flex-direction: column; gap: 20px; }
+</style>
 </head>
 <body>
 
 <header id="site-nav"></header>
 
-<main class="page">
-  <h1>OBS overlay</h1>
-  <p>This is a playground page for testing OBS overlays. Nothing here yet.</p>
+<main class="page" id="setup">
+  <div class="obs-layout">
+
+    <section class="obs-panel">
+      <h1>OBS overlay</h1>
+      <p class="hint">Playground: a live entry counter you can add to OBS as a browser source. It reads Twitch chat anonymously, so no login is needed.</p>
+
+      <div class="field">
+        <label for="fChannel">Twitch channel</label>
+        <input type="text" id="fChannel" placeholder="e.g. snejpen" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="fKeyword">Keyword to count</label>
+        <input type="text" id="fKeyword" placeholder="e.g. !join" autocomplete="off" spellcheck="false">
+      </div>
+      <label class="check"><input type="checkbox" id="fAny"> Count anyone who chats (no keyword)</label>
+
+      <div class="field">
+        <label for="fLabel">Label</label>
+        <input type="text" id="fLabel" value="Entries" maxlength="30" autocomplete="off">
+      </div>
+      <div class="row2">
+        <div class="field"><label for="fColor">Text colour</label><input type="color" id="fColor" value="#ffffff"></div>
+        <div class="field"><label for="fSize">Size (px)</label><input type="number" id="fSize" value="64" min="12" max="300"></div>
+      </div>
+      <div class="field">
+        <label for="fBg">Background</label>
+        <select id="fBg"><option value="clear">Transparent</option><option value="box">Dark box</option></select>
+      </div>
+      <label class="check"><input type="checkbox" id="fShowLabel" checked> Show the label</label>
+
+      <div class="actions">
+        <button class="btn primary" id="startBtn" type="button">Start preview</button>
+        <button class="btn" id="testBtn" type="button">Add test entry</button>
+        <button class="btn" id="resetBtn" type="button">Reset count</button>
+      </div>
+      <p class="status" id="status">Not connected.</p>
+    </section>
+
+    <div class="stack">
+      <section class="obs-panel">
+        <h2>Preview</h2>
+        <div class="preview-stage"><div class="counter" id="previewCounter"><span class="label">Entries</span><span class="num">0</span></div></div>
+      </section>
+
+      <section class="obs-panel">
+        <h2>OBS browser source link</h2>
+        <div class="url-row">
+          <input type="text" id="urlBox" readonly aria-label="Overlay link">
+          <button class="btn" id="copyBtn" type="button">Copy</button>
+        </div>
+        <ol class="steps">
+          <li>In OBS, add a <b>Browser</b> source and paste the link into <b>URL</b>.</li>
+          <li>Set width and height to fit the counter (for example 600 × 200).</li>
+          <li>Untick <b>Shutdown source when not visible</b> and <b>Refresh browser when scene becomes active</b>, or the count resets when you switch scenes.</li>
+        </ol>
+      </section>
+    </div>
+
+  </div>
 </main>
 
-<script src="site.js"></script>
+<div id="overlayRoot" hidden><div class="counter" id="overlayCounter"><span class="label">Entries</span><span class="num">0</span></div></div>
+
+<script>
+(function () {
+  "use strict";
+
+  const params = new URLSearchParams(location.search);
+  const overlayMode = !!params.get("channel");
+
+  function sanitizeChannel(raw) {
+    return String(raw || "").trim().toLowerCase().replace(/^#/, "").replace(/^twitch\.tv\//, "");
+  }
+  function containsKeyword(message, kw) {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp("(^|[^a-z0-9_])" + escaped + "([^a-z0-9_]|$)", "i").test(message);
+  }
+
+  /* ---------- the counter: anonymous Twitch chat, one count per chatter ---------- */
+  function createCounter(onChange, onStatus) {
+    let ws = null, channel = "", keyword = "", any = false;
+    let users = new Set();
+    let intentionalClose = false, reconnectTimer = null;
+
+    function add(name) {
+      const key = String(name).toLowerCase();
+      if (users.has(key)) return;
+      users.add(key);
+      onChange(users.size);
+    }
+
+    function handleLine(line) {
+      let tags = {}, rest = line;
+      if (line.startsWith("@")) {
+        const sp = line.indexOf(" ");
+        line.slice(1, sp).split(";").forEach(function (p) { const i = p.indexOf("="); if (i > 0) tags[p.slice(0, i)] = p.slice(i + 1); });
+        rest = line.slice(sp + 1);
+      }
+      if (rest.startsWith("PING")) { ws.send("PONG :tmi.twitch.tv"); return; }
+      if (rest.includes(" 001 ")) { onStatus("Connected, watching #" + channel); return; }
+      const m = rest.match(/^:([^!]+)!\S+ PRIVMSG #([^ ]+) :(.*)$/);
+      if (m && m[2].toLowerCase() === channel && (any || (keyword && containsKeyword(m[3], keyword)))) {
+        add(tags["display-name"] || m[1]);
+      }
+    }
+
+    function open() {
+      onStatus("Connecting…");
+      ws = new WebSocket("wss://irc-ws.chat.twitch.tv:443");
+      ws.onopen = function () {
+        ws.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
+        ws.send("PASS SCHMOOPIIE");
+        ws.send("NICK justinfan" + Math.floor(10000 + Math.random() * 90000));
+        ws.send("JOIN #" + channel);
+      };
+      ws.onmessage = function (e) { String(e.data).split("\r\n").filter(Boolean).forEach(handleLine); };
+      ws.onerror = function () { onStatus("Connection error"); };
+      ws.onclose = function () {
+        if (intentionalClose) return;
+        onStatus("Disconnected, reconnecting…");
+        reconnectTimer = setTimeout(open, 3000);
+      };
+    }
+
+    return {
+      start: function (ch, kw, anyMsg) {
+        this.stop();
+        channel = sanitizeChannel(ch); keyword = kw.trim(); any = anyMsg;
+        users = new Set(); onChange(0);
+        intentionalClose = false;
+        if (channel) open();
+      },
+      stop: function () {
+        intentionalClose = true;
+        clearTimeout(reconnectTimer);
+        if (ws) { try { ws.close(); } catch (e) {} ws = null; }
+      },
+      reset: function () { users = new Set(); onChange(0); },
+      addTest: function () { add("test" + Math.random().toString(36).slice(2, 8)); },
+      get size() { return users.size; }
+    };
+  }
+
+  /* ---------- styling shared by preview and overlay ---------- */
+  function styleCounter(el, o) {
+    el.style.color = o.color;
+    el.style.fontSize = o.size + "px";
+    el.classList.toggle("box", o.bg === "box");
+    const label = el.querySelector(".label");
+    label.textContent = o.label;
+    label.style.display = o.showLabel && o.label ? "" : "none";
+  }
+  function setNumber(el, n) {
+    const num = el.querySelector(".num");
+    if (num.textContent === String(n)) return;
+    num.textContent = n;
+    el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+  }
+
+  /* =========================================================
+     Real overlay (opened by OBS with the settings in the link)
+     ========================================================= */
+  if (overlayMode) {
+    document.documentElement.classList.add("overlay");
+    document.body.classList.add("overlay");
+    document.getElementById("site-nav").remove();
+    document.getElementById("setup").remove();
+    const root = document.getElementById("overlayRoot");
+    root.hidden = false;
+    const el = document.getElementById("overlayCounter");
+    const size = parseInt(params.get("size"), 10);
+    styleCounter(el, {
+      color: /^[0-9a-f]{3,8}$/i.test(params.get("color") || "") ? "#" + params.get("color") : "#ffffff",
+      size: size >= 12 && size <= 300 ? size : 64,
+      bg: params.get("bg") === "box" ? "box" : "clear",
+      label: params.get("label") === null ? "Entries" : params.get("label").slice(0, 30),
+      showLabel: params.get("showlabel") !== "0"
+    });
+    createCounter(function (n) { setNumber(el, n); }, function () {})
+      .start(params.get("channel"), params.get("keyword") || "", params.get("any") === "1");
+    return;
+  }
+
+  /* =========================================================
+     Setup page
+     ========================================================= */
+  const s = document.createElement("script");
+  s.src = "site.js";
+  document.body.appendChild(s);
+
+  const $ = function (id) { return document.getElementById(id); };
+  const fChannel = $("fChannel"), fKeyword = $("fKeyword"), fAny = $("fAny"), fLabel = $("fLabel"),
+        fColor = $("fColor"), fSize = $("fSize"), fBg = $("fBg"), fShowLabel = $("fShowLabel"),
+        urlBox = $("urlBox"), statusEl = $("status"), preview = $("previewCounter");
+
+  const counter = createCounter(function (n) { setNumber(preview, n); }, function (t) { statusEl.textContent = t; });
+
+  function options() {
+    const size = parseInt(fSize.value, 10);
+    return {
+      color: fColor.value,
+      size: size >= 12 && size <= 300 ? size : 64,
+      bg: fBg.value,
+      label: fLabel.value,
+      showLabel: fShowLabel.checked
+    };
+  }
+
+  function buildUrl() {
+    const o = options();
+    const u = new URL("obs-overlay.html", location.href);
+    u.search = "";
+    const q = u.searchParams;
+    q.set("channel", sanitizeChannel(fChannel.value) || "yourchannel");
+    if (fAny.checked) q.set("any", "1"); else q.set("keyword", fKeyword.value.trim());
+    q.set("label", o.label);
+    if (!o.showLabel) q.set("showlabel", "0");
+    q.set("color", o.color.slice(1));
+    q.set("size", o.size);
+    q.set("bg", o.bg);
+    return u.toString();
+  }
+
+  function refresh() {
+    fKeyword.disabled = fAny.checked;
+    styleCounter(preview, options());
+    urlBox.value = buildUrl();
+  }
+  [fChannel, fKeyword, fAny, fLabel, fColor, fSize, fBg, fShowLabel].forEach(function (el) {
+    el.addEventListener("input", refresh);
+    el.addEventListener("change", refresh);
+  });
+
+  $("startBtn").addEventListener("click", function () {
+    if (!sanitizeChannel(fChannel.value)) { statusEl.textContent = "Enter a Twitch channel first."; return; }
+    if (!fAny.checked && !fKeyword.value.trim()) { statusEl.textContent = "Enter a keyword, or tick “Count anyone who chats”."; return; }
+    counter.start(fChannel.value, fKeyword.value, fAny.checked);
+  });
+  $("testBtn").addEventListener("click", function () { counter.addTest(); });
+  $("resetBtn").addEventListener("click", function () { counter.reset(); });
+  $("copyBtn").addEventListener("click", function () {
+    urlBox.select();
+    const done = function () { $("copyBtn").textContent = "Copied"; setTimeout(function () { $("copyBtn").textContent = "Copy"; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(urlBox.value).then(done, function () { document.execCommand("copy"); done(); });
+    else { document.execCommand("copy"); done(); }
+  });
+
+  refresh();
+})();
+</script>
 </body>
 </html>
