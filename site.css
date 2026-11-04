@@ -460,3 +460,19 @@ body.buttsoap .audio-toggle { display: flex; }
 .audio-volume::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 0; }
 .audio-volume::-moz-range-track { background: var(--line-strong); height: 5px; border-radius: 3px; }
 .audio-volume::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 0; }
+
+/* ---------- warning shown at the top of every Playground page ---------- */
+.playground-banner {
+  margin: 0 0 20px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 2px solid var(--danger);
+  background: rgba(255, 128, 119, 0.12);
+  color: var(--danger);
+  font-size: clamp(22px, 4.5vw, 40px);
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+body.livx .playground-banner, body.buttsoap .playground-banner { color: #c0261b; border-color: #c0261b; background: rgba(192, 38, 27, 0.1); }

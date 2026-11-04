@@ -403,8 +403,19 @@
     document.body.appendChild(hint);
   }
 
+  // every page in the Playground menu carries a warning at the top
+  function buildPlaygroundBanner() {
+    const here = currentFile();
+    const playground = SITE.menus.filter(function (m) { return m.label === "Playground"; })[0];
+    if (!playground || !playground.items.some(function (i) { return i.href === here; })) return;
+    const page = document.querySelector(".page");
+    if (!page) return;
+    page.insertBefore(el("div", { class: "playground-banner", role: "alert", text: "WORK IN PROGRESS DO NOT USE ANY OF THESE TOOLS" }), page.firstChild);
+  }
+
   buildNav();
   buildToolGrid();
+  buildPlaygroundBanner();
   buildThemeHint();
 
   let saved = "default";
