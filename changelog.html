@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog — Snejpen.men</title>
+<link rel="stylesheet" href="site.css">
+<style>
+  .changelog-wrap { max-width: 860px; margin: 0 auto; }
+  .changelog-wrap h1 { margin: 0 0 6px; }
+  .changelog-wrap .note { margin: 0 0 18px; color: var(--text-dim, var(--muted, inherit)); font-size: 14px; opacity: 0.8; }
+  .changelog { width: 100%; border-collapse: collapse; background: var(--bg-raised); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  .changelog th, .changelog td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line-strong); vertical-align: top; }
+  .changelog th { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+  .changelog tbody tr:last-child td { border-bottom: none; }
+  .changelog td.when { white-space: nowrap; font-family: var(--mono, monospace); font-size: 13px; width: 1%; }
+  @media (max-width: 520px) { .changelog th, .changelog td { padding: 9px 10px; } .changelog td.when { font-size: 12px; } }
+</style>
+</head>
+<body>
+
+<header id="site-nav"></header>
+
+<main class="page">
+  <div class="changelog-wrap">
+    <h1>Changelog</h1>
+    <p class="note">Newest first. Times are Norwegian time.</p>
+    <table class="changelog">
+      <thead>
+        <tr><th>Date and time</th><th>Change</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="when">2026-11-04 23:23</td><td>Added an “Other” menu with this changelog. Tightened the top menu on small phone screens.</td></tr>
+        <tr><td class="when">2026-11-04 23:19</td><td>Name selector: wheel drifts slowly while waiting.</td></tr>
+        <tr><td class="when">2026-11-04 23:18</td><td>Name selector: sideways labels, random landing spot, “Reopen entries” button after a spin.</td></tr>
+        <tr><td class="when">2026-11-04 23:08</td><td>Added a “Playground” menu with an OBS overlay test page.</td></tr>
+        <tr><td class="when">2026-11-02 16:02</td><td>Wheel spin: Shuffle button.</td></tr>
+        <tr><td class="when">2026-11-02 15:20</td><td>Wheel spin: lands at a random point inside the winning slice.</td></tr>
+        <tr><td class="when">2026-11-02 00:22</td><td>Wheel spin: “Use weights” is now set per wheel. Theme menu renamed to default / skinny / fat.</td></tr>
+        <tr><td class="when">2026-11-02 00:12</td><td>Wheel spin: up to 5 named wheels picked from a dropdown. Old settings were carried over.</td></tr>
+        <tr><td class="when">2026-11-01 23:51</td><td>Coin flip: Animelover theme.</td></tr>
+        <tr><td class="when">2026-11-01 23:37</td><td>Wheel spin: all slice labels face the same way.</td></tr>
+        <tr><td class="when">2026-11-01 18:38</td><td>Custom cursors now click from the centre of the emoji.</td></tr>
+        <tr><td class="when">2026-11-01 18:24</td><td>Wheel spin: optional second wheel; weights default to 10.</td></tr>
+        <tr><td class="when">2026-11-01 17:09</td><td>Buttsoap theme: volume slider for sounds.</td></tr>
+        <tr><td class="when">2026-11-01 16:59</td><td>Buttsoap theme: optional spin and win sounds.</td></tr>
+        <tr><td class="when">2026-11-01 16:48</td><td>Theme pictures sit in the background without shrinking the page.</td></tr>
+        <tr><td class="when">2026-11-01 16:39</td><td>Wheel spin: optional weights per option.</td></tr>
+        <tr><td class="when">2026-11-01 16:30</td><td>Brighter wheel colours; wheel spin drifts slowly while waiting.</td></tr>
+        <tr><td class="when">2026-10-31 17:06</td><td>Site renamed to Snejpen.men.</td></tr>
+        <tr><td class="when">2026-10-31 16:58</td><td>Site launched with Random name selector, Coin flip, Wheel spin and the Close WoW script.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script src="site.js"></script>
+</body>
+</html>

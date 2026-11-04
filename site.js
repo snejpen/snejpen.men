@@ -61,6 +61,17 @@
         ]
       },
       {
+        label: "Other",
+        items: [
+          {
+            label: "Changelog",
+            href: "changelog.html",
+            icon: "📝",
+            description: "What changed on the site, and when."
+          }
+        ]
+      },
+      {
         label: "Themes",
         hidden: true,    // nav bar only: not listed on the main page
         corner: true,    // sits in the far right corner of the bar

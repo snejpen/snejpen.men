@@ -426,7 +426,22 @@ body.buttsoap .theme-side { bottom: 9vh; filter: drop-shadow(0 8px 16px rgba(120
   .nav-corner { position: static; height: auto; padding: 0 14px 0 4px; }
   .nav-inner { gap: 12px; padding: 0 14px; }
   .brand { font-size: 14px; }
+  .nav-inner { gap: 8px; padding: 0 8px 0 12px; }
+  .nav-menus { gap: 2px; }
+  .nav-trigger { padding: 7px 7px; gap: 4px; font-size: 13px; }
+  .nav-trigger::after { width: 5px; height: 5px; }
+  .nav-trigger { gap: 3px; }
+  .nav-corner { padding: 0 8px 0 0; }
   .page { padding: 20px 14px 40px; }
+}
+
+@media (max-width: 440px) {
+  .nav-trigger { padding: 7px 4px; font-size: 12px; }
+  .nav-trigger::after { display: none; }   /* no room for the little arrows */
+  .brand { font-size: 12.5px; }
+  .nav-menus { gap: 1px; }
+  .nav-inner { gap: 5px; padding: 0 4px 0 8px; }
+  .nav-corner { padding: 0 6px 0 0; }
 }
 
 /* ---------- theme cursors (emoji drawn as an SVG cursor image) ---------- */
