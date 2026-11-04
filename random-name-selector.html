@@ -276,6 +276,7 @@
   .primary-action { background: var(--primary); color: var(--on-primary); }
   .primary-action:hover { background: var(--primary-hover); }
   .primary-action:disabled { background: var(--disabled-bg); color: var(--disabled-text); cursor: not-allowed; }
+  .secondary-action[hidden] { display: none; }
   .secondary-action { background: var(--bg-raised); border: 1px solid var(--line-strong); color: var(--text); }
   .secondary-action:hover { background: var(--bg-raised-hover); }
 
@@ -358,7 +359,7 @@
 
         <div class="wheel-controls">
           <button class="primary-action" id="spinBtn" disabled>Spin the wheel</button>
-          <button class="secondary-action" id="resetBtn">Reset</button>
+          <button class="secondary-action" id="resetBtn" hidden>Reopen entries</button>
         </div>
       <div id="audioSlot"></div>
       </div>
@@ -654,30 +655,24 @@
     const segRad = (segAngle * Math.PI) / 180;
     const longest = names.reduce(function (m, n) { return Math.max(m, n.length); }, 0);
 
-    // 1) across the slice
-    const acrossChars = Math.min(longest, 10);
-    const acrossFont = Math.max(7, Math.min(14, segAngle * 0.42));
-    const acrossRadius = R_RIM * 0.63;
-    const halfAngle = Math.min(segRad / 2, 1.396); // cap at 80° so tan() stays sane for 2–3 slices
-    const room = 2 * (acrossRadius - acrossFont / 2) * Math.tan(halfAngle);
-    if (acrossChars * CHAR_W * acrossFont <= room * 0.92) {
-      return { mode: "across", fontSize: acrossFont, chars: 10 };
-    }
+    // this wheel always runs the text along the slice, which leaves room for much longer options
 
     // 2) along the slice: biggest font where the longest name still fits, and where the
     //    slice is still thick enough at the inner end of the text
     const thickness = 1.25 / segRad; // a text line's box is ~1.17x its font size, plus a little air
-    const L = Math.min(longest, 16);
+    const L = Math.min(longest, 34);
     let font = Math.min(14, R_TEXT_END / (CHAR_W * L + thickness), (R_TEXT_END - R_TEXT_MIN) / (CHAR_W * L));
     let chars = L;
+    let shrunk = false;
     if (font < MIN_RADIAL_FONT) {
+      shrunk = true;
       font = MIN_RADIAL_FONT;
       chars = Math.floor(Math.min(
         (R_TEXT_END - thickness * font) / (CHAR_W * font),
         (R_TEXT_END - R_TEXT_MIN) / (CHAR_W * font)
       ));
     }
-    if (chars < 3) return { mode: "none" }; // too many slices for readable text; the winner banner still names the pick
+    if (shrunk && chars < 3) return { mode: "none" }; // too many slices for readable text; the winner banner still names the pick
     return { mode: "along", fontSize: font, chars: chars };
   }
 
@@ -737,28 +732,13 @@
         const label = truncateName(names[i], layout.chars);
         let attrs;
 
-        if (layout.mode === "across") {
-          const [lx, ly] = polarPoint(cx, cy, r * 0.63, midA);
-          attrs = {
-            x: lx, y: ly,
-            "text-anchor": "middle",
-            transform: "rotate(" + midA + " " + lx + " " + ly + ")"
-          };
-        } else if (midA < 180) {
-          // right half: text ends at the rim and reads left to right
-          attrs = {
-            x: cx + R_TEXT_END, y: cy,
-            "text-anchor": "end",
-            transform: "rotate(" + (midA - 90) + " " + cx + " " + cy + ")"
-          };
-        } else {
-          // left half: flipped so the text is never upside down; it starts at the rim
-          attrs = {
-            x: cx - R_TEXT_END, y: cy,
-            "text-anchor": "start",
-            transform: "rotate(" + (midA + 90) + " " + cx + " " + cy + ")"
-          };
-        }
+        // every label is set the same way, whichever slice it's on: it reads from the middle outward
+        // and ends at the rim.
+        attrs = {
+          x: cx + R_TEXT_END, y: cy,
+          "text-anchor": "end",
+          transform: "rotate(" + (midA - 90) + " " + cx + " " + cy + ")"
+        };
 
         const text = svgEl("text", Object.assign({
           fill: inkFor(colors[i]),
@@ -802,13 +782,16 @@
     hasSpun = true;
     spinning = true;
     spinBtn.disabled = true;
+    resetBtn.hidden = true;
     resultBanner.style.display = "none";
     collapseEntries();
 
     const n = wheelNames.length;
     const segAngle = 360 / n;
     const winnerIndex = Math.floor(Math.random() * n);
-    const centerAngle = winnerIndex * segAngle + segAngle / 2;
+    // land anywhere inside the winning slice (kept a little clear of the edges so there's no doubt which one it is)
+    const margin = Math.min(segAngle * 0.1, 3);
+    const centerAngle = winnerIndex * segAngle + margin + Math.random() * Math.max(0, segAngle - 2 * margin);
     const targetOffset = ((-centerAngle % 360) + 360) % 360;
 
     const baseline = Math.ceil((wheelRotation + 1) / 360) * 360;
@@ -827,6 +810,7 @@
       spinTimer = null;
       spinBtn.disabled = false;
       spinBtn.textContent = "Spin again";
+      resetBtn.hidden = false;
     }, SPIN_DURATION_MS);
   }
 
@@ -840,6 +824,7 @@
     lockBtn.classList.remove("locked");
     resultBanner.style.display = "none";
     spinBtn.textContent = "Spin the wheel";
+    resetBtn.hidden = true;
     expandEntries();
     snapWheelToStart();
     refreshWheel();
