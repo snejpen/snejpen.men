@@ -410,7 +410,7 @@
     if (!playground || !playground.items.some(function (i) { return i.href === here; })) return;
     const page = document.querySelector(".page");
     if (!page) return;
-    page.insertBefore(el("div", { class: "playground-banner", role: "alert", text: "WORK IN PROGRESS DO NOT USE ANY OF THESE TOOLS" }), page.firstChild);
+    page.insertBefore(el("div", { class: "playground-banner", role: "alert", text: "WORK IN PROGRESS DO NOT USE ANY OF THE TOOLS UNDER PLAYGROUND" }), page.firstChild);
   }
 
   buildNav();
