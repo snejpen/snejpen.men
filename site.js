@@ -50,6 +50,17 @@
         ]
       },
       {
+        label: "Playground",
+        items: [
+          {
+            label: "OBS overlay",
+            href: "obs-overlay.html",
+            icon: "🎬",
+            description: "A testing page for OBS overlays. Work in progress."
+          }
+        ]
+      },
+      {
         label: "Themes",
         hidden: true,    // nav bar only: not listed on the main page
         corner: true,    // sits in the far right corner of the bar
