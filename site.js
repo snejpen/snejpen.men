@@ -52,7 +52,7 @@
             href: "downloads/MonsterWater.zip",
             download: "MonsterWater.zip",
             icon: "🥤",
-            description: "WoW addon that changes the Conjured Water icon into a white Monster Energy can. Unzip the MonsterWater folder into your AddOns folder."
+            description: "WoW addon that changes the icon of every rank of Conjured Water into a white Monster Energy can. Unzip the MonsterWater folder into your AddOns folder."
           }
         ]
       },
