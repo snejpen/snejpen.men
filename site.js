@@ -38,7 +38,7 @@
         ]
       },
       {
-        label: "Scripts",
+        label: "Downloads",
         items: [
           {
             label: "Close WoW script",
@@ -46,6 +46,13 @@
             download: "CloseWowScript.ps1",   // makes the browser save the file instead of opening it
             icon: "📜",
             description: "PowerShell script that asks which WoW version and what min/max interval to use, then force-closes the game at random times in that range, on repeat."
+          },
+          {
+            label: "Monster Water addon",
+            href: "downloads/MonsterWater.zip",
+            download: "MonsterWater.zip",
+            icon: "🥤",
+            description: "WoW addon that changes the Conjured Water icon into a white Monster Energy can. Unzip the MonsterWater folder into your AddOns folder."
           }
         ]
       },
