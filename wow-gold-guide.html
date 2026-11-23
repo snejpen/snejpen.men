@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WoW Gold making guide — Snejpen.men</title>
+<link rel="stylesheet" href="site.css">
+<style>
+  .guide { max-width: 780px; margin: 0 auto; }
+  .guide h1 { margin: 0 0 8px; }
+  .guide .intro { margin: 0 0 24px; color: var(--text-dim); line-height: 1.5; }
+  .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 12px; }
+  .steps li {
+    counter-increment: step; position: relative;
+    background: var(--bg-panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px 16px 62px; box-shadow: var(--shadow);
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 16px; top: 16px; width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--primary); color: var(--on-primary); font-weight: 700; font-size: 15px;
+  }
+  .steps h2 { margin: 0 0 6px; font-size: 17px; }
+  .steps p { margin: 0 0 6px; line-height: 1.5; }
+  .steps p:last-child { margin-bottom: 0; }
+  .steps .where { color: var(--text-dim); font-size: 14px; }
+  .note {
+    margin-top: 20px; padding: 14px 18px; border-radius: 12px;
+    border: 1px solid var(--line-strong); background: var(--bg-raised); color: var(--text-dim);
+    font-size: 14px; line-height: 1.5;
+  }
+  @media (max-width: 520px) {
+    .steps li { padding: 14px 14px 14px 54px; }
+    .steps li::before { left: 12px; top: 14px; width: 30px; height: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<header id="site-nav"></header>
+
+<main class="page">
+  <div class="guide">
+    <h1>WoW Gold making guide</h1>
+    <p class="intro">How to learn and make <b>Dragonbreath Chili</b>, a Cooking item that sells well on the auction house because one of its two ingredients is hard to come by.</p>
+
+    <ol class="steps">
+      <li>
+        <h2>Learn Cooking</h2>
+        <p>Visit the Cooking trainer in any capital city and learn Apprentice Cooking. Cooking can be learned alongside your other professions.</p>
+      </li>
+      <li>
+        <h2>Level Cooking to 50, then learn Journeyman</h2>
+        <p>Cook anything cheap until you reach skill 50. Go back to a Cooking trainer and learn Journeyman Cooking. You need to be level 10.</p>
+      </li>
+      <li>
+        <h2>Level Cooking to 125, then learn Expert</h2>
+        <p>Keep cooking until skill 125, then buy the Expert Cookbook and read it. You need to be level 20.</p>
+        <p class="where">Alliance: Shandrina in Ashenvale. Horde: Wulan in Shadowprey Village, Desolace.</p>
+      </li>
+      <li>
+        <h2>Level Cooking to 200</h2>
+        <p>The Dragonbreath Chili recipe needs Cooking skill 200. You don't need Artisan Cooking for it, so you can stop at Expert.</p>
+      </li>
+      <li>
+        <h2>Buy the recipe</h2>
+        <p>Buy <b>Recipe: Dragonbreath Chili</b> from one of these vendors, then use it to learn the recipe.</p>
+        <p class="where">Super-Seller 680 near Gelkis Village (Desolace). Janet Hommers in Nijel's Point (Desolace). Helenia Olden in Theramore Isle (Dustwallow Marsh).</p>
+      </li>
+      <li>
+        <h2>Get the Mystery Meat</h2>
+        <p>Each chili needs one Mystery Meat. It drops from most beasts between level 30 and 58, so you'll pick up plenty while killing animals, and it's cheap on the auction house.</p>
+      </li>
+      <li>
+        <h2>Get the Small Flame Sac</h2>
+        <p>Each chili also needs one Small Flame Sac. This is the hard part: it's a rare drop, which is why the chili sells for good money.</p>
+        <p class="where">Drops from Jade in the Swamp of Sorrows and from Eldreth Darters in Dire Maul (the Capital Gardens, in the west wing).</p>
+      </li>
+      <li>
+        <h2>Cook it</h2>
+        <p>Stand next to a cooking fire, open Cooking, and make Dragonbreath Chili from 1 Mystery Meat and 1 Small Flame Sac. The food gives a buff that occasionally belches flame at enemies you hit in melee for 10 minutes. You need to be level 15 to eat it.</p>
+      </li>
+      <li>
+        <h2>Sell it</h2>
+        <p>Check the auction house price first, then compare it with what the Small Flame Sac costs you. If you farmed the sacs yourself, the whole chili is profit.</p>
+      </li>
+    </ol>
+
+    <p class="note">These steps are for WoW Classic. Vendor stock, drop rates and prices can differ between game versions and servers, so check yours before you buy anything.</p>
+  </div>
+</main>
+
+<script src="site.js"></script>
+</body>
+</html>

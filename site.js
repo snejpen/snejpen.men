@@ -68,6 +68,12 @@
             href: "changelog.html",
             icon: "📝",
             description: "What changed on the site, and when."
+          },
+          {
+            label: "WoW Gold making guide",
+            href: "wow-gold-guide.html",
+            icon: "💰",
+            description: "Step-by-step guide to learning and making Dragonbreath Chili."
           }
         ]
       },
