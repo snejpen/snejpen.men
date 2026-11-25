@@ -3,7 +3,7 @@ $selection = Read-Host "Select version, 1 = Modern, 2 = Classic, 3 = Forever"
 switch ($selection) {
     "1" { $processName = "Wow" }
     "2" { $processName = "WowClassic" }
-    "3" { $processName = "WowB" }
+    "3" { $processName = "Wow" }
     default {
         Write-Host "Invalid selection. Please run the script again."
         exit
